@@ -1,0 +1,27 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --font: "Roboto", sans-serif;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+div,
+input {
+  font-family: var(--font);
+  font-size: inherit;
+}
+
+table {
+  --font: "Roboto Mono", monospace;
+}
