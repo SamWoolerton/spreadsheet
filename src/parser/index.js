@@ -1,5 +1,5 @@
 import * as P from "parsimmon"
-import { Ok, Fail, quotient, getFirst, isObject } from "./utility"
+import { Ok, Fail, quotient, getFirst, isObject } from "../utility"
 
 const operators = {
   "+": (a, b) => a + b,
@@ -23,74 +23,73 @@ const functions = {
   "": n => n,
 }
 
-const variables = {
-  $current: 50,
-}
+export function makeParser(references) {
+  const { main: parser } = P.createLanguage({
+    main: r => P.alt(r.formula, r.primitive),
+    formula: r =>
+      P.seq(r.eq, r.optWhitespace, P.alt(r.expression, r.function))
+        .map(removeNonValues)
+        .map(getFirst)
+        .desc("formula"),
 
-const { main: parser } = P.createLanguage({
-  main: r => P.alt(r.formula, r.primitive),
-  formula: r =>
-    P.seq(r.eq, r.optWhitespace, P.alt(r.expression, r.function))
-      .map(removeNonValues)
-      .map(getFirst)
-      .desc("formula"),
+    expression: r =>
+      P.alt(r.function, r.reference, r.operator, r.primitive)
+        .sepBy(P.alt(P.whitespace, P.string("")))
+        .map(handleExtendedExpressions)
+        .desc("expression without brackets"),
 
-  expression: r =>
-    P.alt(r.function, r.variable, r.operator, r.primitive)
-      .sepBy(P.alt(P.whitespace, P.string("")))
-      .map(handleExtendedExpressions)
-      .desc("expression without brackets"),
+    eq: () => P.string("="),
+    ampersand: () => P.string("&"),
+    operator: () => P.alt(...operatorsList.map(P.string)).desc("operator"),
+    lbracket: () => P.string("("),
+    rbracket: () => P.string(")"),
+    comma: () => P.string(","),
+    optWhitespace: () => P.regexp(/\s?/).desc("optional whitespace"),
 
-  eq: () => P.string("="),
-  ampersand: () => P.string("&"),
-  operator: () => P.alt(...operatorsList.map(P.string)).desc("operator"),
-  lbracket: () => P.string("("),
-  rbracket: () => P.string(")"),
-  comma: () => P.string(","),
-  optWhitespace: () => P.regexp(/\s?/).desc("optional whitespace"),
+    primitive: r => P.alt(r.boolean, r.string, r.number).desc("primitive"),
+    string: () =>
+      P.regexp(/".*?"/)
+        .map(removeEnclosingQuotes)
+        .map(Ok)
+        .desc("string"),
+    boolean: () =>
+      P.alt(P.string("true"), P.string("false"))
+        .map(v => v === "true")
+        .map(Ok)
+        .desc("boolean"),
+    number: () =>
+      P.regexp(/-?(\d+)(\.\d+)?/)
+        .map(Number)
+        .map(Ok)
+        .desc("number"),
 
-  primitive: r => P.alt(r.boolean, r.string, r.number).desc("primitive"),
-  string: () =>
-    P.regexp(/".*?"/)
-      .map(removeEnclosingQuotes)
-      .map(Ok)
-      .desc("string"),
-  boolean: () =>
-    P.alt(P.string("true"), P.string("false"))
-      .map(v => v === "true")
-      .map(Ok)
-      .desc("boolean"),
-  number: () =>
-    P.regexp(/-?(\d+)(\.\d+)?/)
-      .map(Number)
-      .map(Ok)
-      .desc("number"),
+    function: r =>
+      P.seq(
+        r.functionName,
+        r.lbracket
+          .then(r.functionArg.sepBy(addOptionalWhitespace(r, r.comma)))
+          .skip(r.rbracket),
+      )
+        .map(handleFunction)
+        .desc("function"),
+    functionName: () => P.regexp(/[a-z_]*/).desc("function name"),
+    functionArg: r => P.alt(r.function, r.expression, r.primitive),
 
-  function: r =>
-    P.seq(
-      r.functionName,
-      r.lbracket
-        .then(r.functionArg.sepBy(addOptionalWhitespace(r, r.comma)))
-        .skip(r.rbracket),
-    )
-      .map(handleFunction)
-      .desc("function"),
-  functionName: () => P.regexp(/[a-z_]*/).desc("function name"),
-  functionArg: r => P.alt(r.function, r.expression, r.primitive),
+    reference: () =>
+      P.regexp(/[A-Z]+\d+/)
+        .map(ref => handleReference(references, ref))
+        .desc("reference"),
+  })
 
-  variable: () =>
-    P.regexp(/\$[a-z_]+/)
-      .map(handleVariable)
-      .desc("variable"),
-})
-
-export function parse(input, { suppress = false } = {}) {
-  try {
-    // @ts-ignore
-    return parser.tryParse(input)
-  } catch ({ message }) {
-    if (!suppress) console.log("Parsing error \n", message)
-    return Fail("syntax")
+  return function parse(input, { suppress = false } = {}) {
+    try {
+      // @ts-ignore
+      if (input === "") return Ok("")
+      return parser.tryParse(input)
+    } catch ({ message }) {
+      if (!suppress) console.log("Parsing error \n", message)
+      return Fail("syntax")
+    }
   }
 }
 
@@ -136,10 +135,14 @@ function handleExtendedExpressions([first, ...rest]) {
   )
 }
 
-function handleVariable(name) {
-  const variable = variables[name]
-  if (!variable) return Fail(`missing variable '${name}'`)
-  return Ok(variable)
+function handleReference(references, name) {
+  const reference = references[name]
+  if (!reference) return Fail(`missing reference '${name}'`)
+
+  const {
+    value: { ok, value },
+  } = reference
+  return ok ? Ok(value) : Fail(`error in referenced cell '${name}'`)
 }
 
 function addOptionalWhitespace(r, el) {

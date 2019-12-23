@@ -1,5 +1,13 @@
-import { parse } from "./index"
-import { Ok, Fail } from "./utility"
+import { makeParser } from "./index"
+import { Ok, Fail } from "../utility"
+
+const state = {
+  A1: { value: Ok(5) },
+  B3: { value: Ok(13) },
+  C8: { value: Fail("syntax") },
+}
+
+const parse = makeParser(state)
 
 const tests = [
   ["Number", `3`, Ok(3)],
@@ -45,17 +53,18 @@ const tests = [
   ["Brackets precedence", `=2*(3+4)`, Ok(14)],
   ["If function with expression", `=if(4>2,10,3)`, Ok(10)],
   ["Parser error", `=#`, Fail("syntax"), { suppress: true }],
-  ["Variable", `=$current`, Ok(50)],
+  ["Reference", `=A1`, Ok(5)],
   [
-    "Variable without equals is error",
-    `$current`,
+    "Reference without equals is error",
+    `B3`,
     Fail("syntax"),
     { suppress: true },
   ],
-  ["Variable in expression", `=5 + $current`, Ok(55)],
-  ["Variable in chained expression", `=5 + ($current * 2)`, Ok(105)],
-  ["Variable in function", `=increment($current)`, Ok(51)],
-  ["Variable in nested function", `=add(increment($current), 17)`, Ok(68)],
+  ["Reference in expression", `=5 + A1`, Ok(10)],
+  ["Reference in chained expression", `=5 + (B3 * 2)`, Ok(31)],
+  ["Reference in function", `=increment(A1)`, Ok(6)],
+  ["Reference in nested function", `=add(increment(B3), 17)`, Ok(31)],
+  ["Reference to error", `=C8`, Fail("error in referenced cell 'C8'")],
 ]
 
 const outcomes = tests

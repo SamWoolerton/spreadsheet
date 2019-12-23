@@ -59,17 +59,17 @@
 </template>
 
 <script>
-import { parse } from "../parser/index"
+import { makeParser } from "../parser/index"
+import { Ok, Fail } from "../utility"
+
+const startingState = {}
+const parse = makeParser(startingState)
 
 // utility
 const set = (...args) => new Set(Array.isArray(args[0]) ? args[0] : args)
 const createArr = len => [...new Array(len)]
-// const eqSets = (a, b) => {
-//   for (const elem of a) {
-//     if (!b.has(elem)) return false
-//   }
-//   return true
-// }
+const eqSets = (a, b) =>
+  a.size === b.size && [...a].every(value => b.has(value))
 const getColLetter = i => String.fromCharCode(i + 64)
 const getLargeColLetter = i => {
   const first = getColLetter(Math.floor(i / 26))
@@ -82,12 +82,14 @@ const between = (num, lower, upper) =>
   num > upper ? upper : num < lower ? lower : num
 // const clone = obj => JSON.parse(JSON.stringify(obj))
 const deepEq = (o1, o2) => JSON.stringify(o1) === JSON.stringify(o2)
+const referenceRegex = /[A-Z]+\d+/gm
+
 const Cell = ({
   refs = [],
   fullRefs = [],
   deps = [],
   formula = "",
-  value = formula ? parse(formula) : "",
+  value = formula ? parse(formula) : Ok(""),
 } = {}) => ({
   refs: set(refs),
   fullRefs: set(fullRefs),
@@ -96,12 +98,10 @@ const Cell = ({
   value,
 })
 
-// constants
-const startingState = {
-  A1: Cell({ formula: "3" }),
-  A2: Cell({ formula: "1" }),
-  B2: Cell({ formula: "=increment(4)" }),
-}
+startingState.A1 = Cell({ formula: "3" })
+startingState.A2 = Cell({ formula: "1" })
+startingState.B2 = Cell({ formula: "=increment(4)", deps: ["C2"] })
+startingState.C2 = Cell({ formula: "=B2 + 4", refs: ["B2"], fullRefs: ["B2"] })
 
 Object.keys(startingState).forEach(
   pos =>
@@ -111,8 +111,8 @@ Object.keys(startingState).forEach(
 
 export default {
   data: () => ({
-    numColumns: between(30, 1, 26 * 26),
-    numRows: between(60, 1, 100),
+    numColumns: between(10, 1, 26 * 26),
+    numRows: between(10, 1, 100),
     state: startingState,
     editing: {
       pos: null,
@@ -181,16 +181,20 @@ export default {
         this.state[position].formula = ""
       }
 
-      // this.selected.pos = "A1"
-
       // identical formula is no-op
       if (this.editing.initial === formula) return
 
-      // const cell = this.state[position]
-      // const { refs } = cell
-      // const newRefs = this.getReferences(newFormula)
+      // only update references if it parses correctly
+      // if there's an error, references will stay as they were until the cell is updated again
+      const { ok } = parse(formula)
+      if (ok) {
+        const cell = this.state[position]
+        const { refs } = cell
+        const newRefs = this.getReferences(formula)
 
-      // if (!eqSets(refs, newRefs)) this.updateReferences(position, refs, newRefs)
+        if (!eqSets(refs, newRefs))
+          this.updateReferences(position, refs, newRefs)
+      }
 
       this.recalculateCell(position)
     },
@@ -199,18 +203,14 @@ export default {
       await this.$nextTick()
       this.editing.pos = null
     },
-    // function getReferences(formula) {
-    getReferences() {
-      // TODO: use parser
-      const references = []
-      return references
+    getReferences(formula) {
+      return set([...formula.matchAll(referenceRegex)].map(([ref]) => ref))
     },
     updateReferences(self, current, next) {
-      const childFullRefs = next.map(pos => this.state[pos].fullRefs)
-      const fullRefs = set([...next, ...childFullRefs.flat()])
-
-      // check for circular references
-      if (fullRefs.has(self)) throw "Circular reference"
+      const childFullRefs = [...next]
+        .map(pos => [...this.state[pos].fullRefs])
+        .flat()
+      const fullRefs = set([...next, ...childFullRefs])
 
       // update cell references
       this.state[self].refs = next
@@ -235,23 +235,20 @@ export default {
       changes.add.forEach(ref => this.state[ref].deps.add(self))
     },
     recalculateCell(position) {
+      // destructuring in two steps to get the reference for later
       const cell = this.state[position]
-      const initialValue = cell.value
+      const { value: initialValue, deps, fullRefs } = cell
+      let value
 
-      const value = cell.formula === "" ? "" : parse(cell.formula)
-
-      console.log("Recalculating cell", {
-        position,
-        cell,
-        initialValue,
-        value,
-        formula: cell.formula,
-      })
-
-      if (deepEq(value, initialValue)) return
-
-      cell.value = value
-      cell.deps.forEach(this.recalculateCell)
+      // check for circular references
+      if (fullRefs.has(position)) {
+        cell.value = Fail("circular reference")
+      } else {
+        value = parse(cell.formula)
+        if (deepEq(value, initialValue)) return
+        cell.value = value
+      }
+      deps.forEach(this.recalculateCell)
 
       // cells computed property doesn't update otherwise
       this.valueChanged = value
@@ -299,7 +296,7 @@ tbody {
 }
 
 td {
-  border: 1px solid #aaa;
+  border: 1px solid #ddd;
 }
 
 th,
@@ -318,7 +315,7 @@ th,
     bottom: 0;
     right: 0;
     left: 0;
-    border: 1px solid #ccc;
+    border: 1px solid #ddd;
   }
 }
 
