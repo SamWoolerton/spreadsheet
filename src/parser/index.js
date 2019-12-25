@@ -15,31 +15,44 @@ const operators = {
 const operatorsList = Object.keys(operators)
 
 const functions = {
-  add: (a, b) => a + b,
-  increment: n => n + 1,
-  to_power: (n, pow) => Math.pow(n, pow),
-  if: (pred, ifTrue, ifFalse) => (pred ? ifTrue : ifFalse),
-  join: (sep, ...rest) => rest.join(sep),
-  "": n => n,
+  add: {
+    fn: (a, b) => a + b,
+  },
+  increment: {
+    fn: n => n + 1,
+  },
+  to_power: {
+    fn: (n, pow) => Math.pow(n, pow),
+  },
+  if: {
+    fn: (pred, ifTrue, ifFalse) => (pred ? ifTrue : ifFalse),
+  },
+  join: {
+    fn: (sep, ...rest) => rest.join(sep),
+    variadic: true,
+  },
+  "": {
+    fn: n => n,
+  },
 }
 
-export function makeParser(references) {
+export function makeParser(references, { ast = false } = {}) {
   const { main: parser } = P.createLanguage({
     main: r => P.alt(r.formula, r.primitive),
     formula: r =>
       P.seq(r.eq, r.optWhitespace, P.alt(r.expression, r.function))
         .map(removeNonValues)
         .map(getFirst)
+        .map(value => (ast ? { type: "formula", value } : value))
         .desc("formula"),
 
     expression: r =>
       P.alt(r.function, r.reference, r.operator, r.primitive)
         .sepBy(P.alt(P.whitespace, P.string("")))
-        .map(handleExtendedExpressions)
+        .map(handleExtendedExpressions(ast))
         .desc("expression without brackets"),
 
     eq: () => P.string("="),
-    ampersand: () => P.string("&"),
     operator: () => P.alt(...operatorsList.map(P.string)).desc("operator"),
     lbracket: () => P.string("("),
     rbracket: () => P.string(")"),
@@ -50,17 +63,17 @@ export function makeParser(references) {
     string: () =>
       P.regexp(/".*?"/)
         .map(removeEnclosingQuotes)
-        .map(Ok)
+        .map(value => (ast ? { type: "string", value } : Ok(value)))
         .desc("string"),
     boolean: () =>
       P.alt(P.string("true"), P.string("false"))
         .map(v => v === "true")
-        .map(Ok)
+        .map(value => (ast ? { type: "boolean", value } : Ok(value)))
         .desc("boolean"),
     number: () =>
       P.regexp(/-?(\d+)(\.\d+)?/)
         .map(Number)
-        .map(Ok)
+        .map(value => (ast ? { type: "number", value } : Ok(value)))
         .desc("number"),
 
     function: r =>
@@ -70,14 +83,14 @@ export function makeParser(references) {
           .then(r.functionArg.sepBy(addOptionalWhitespace(r, r.comma)))
           .skip(r.rbracket),
       )
-        .map(handleFunction)
+        .map(handleFunction(ast))
         .desc("function"),
     functionName: () => P.regexp(/[a-z_]*/).desc("function name"),
     functionArg: r => P.alt(r.function, r.expression, r.primitive),
 
     reference: () =>
       P.regexp(/[A-Z]+\d+/)
-        .map(ref => handleReference(references, ref))
+        .map(ref => handleReference(ast)(references, ref))
         .desc("reference"),
   })
 
@@ -94,15 +107,24 @@ export function makeParser(references) {
 }
 
 // utilities
-function handleExpression([a, op, b]) {
-  if (!a.ok) return a
-  if (!b.ok) return b
+function handleExpression(ast = false) {
+  return ([a, op, b]) => {
+    if (ast) {
+      return {
+        type: "operator",
+        value: [op, a, b],
+      }
+    }
 
-  try {
-    const result = operators[op](a.value, b.value)
-    return isObject(result) ? result : Ok(result)
-  } catch (err) {
-    return Fail("invalid operation")
+    if (!a.ok) return a
+    if (!b.ok) return b
+
+    try {
+      const result = operators[op](a.value, b.value)
+      return isObject(result) ? result : Ok(result)
+    } catch (err) {
+      return Fail("invalid operation")
+    }
   }
 }
 
@@ -110,39 +132,56 @@ function removeEnclosingQuotes(str) {
   return str.slice(1, -1)
 }
 
-function handleFunction([name, args]) {
-  const fn = functions[name]
+function handleFunction(ast = false) {
+  return ([name, args]) => {
+    if (ast) return { type: "function", value: [name, args] }
 
-  const [fail] = args.filter(({ ok }) => !ok)
-  if (fail) return fail
-  if (!fn) return Fail(`unsupported function '${name}'`)
-  return Ok(fn(...args.map(a => a.value)))
+    const func = functions[name]
+    if (!func) return Fail(`unsupported function '${name}'`)
+    if (!func.variadic) {
+      if (func.length < args.length)
+        return Fail(`too many arguments passed to '${name}'`)
+      if (func.length > args.length)
+        return Fail(`not enough arguments passed to '${name}'`)
+    }
+
+    const [fail] = args.filter(({ ok }) => !ok)
+    if (fail) return fail
+
+    return Ok(func.fn(...args.map(a => a.value)))
+  }
 }
 
-function handleExtendedExpressions([first, ...rest]) {
-  if (rest.length === 0) return first
+function handleExtendedExpressions(ast = false) {
+  return ([first, ...rest]) => {
+    if (rest.length === 0) return first
 
-  const grouped = rest.reduce((acc, next, index) => {
-    const ind = quotient(index, 2)
-    if (!acc[ind]) acc[ind] = []
-    acc[ind].push(next)
-    return acc
-  }, [])
+    const grouped = rest.reduce((acc, next, index) => {
+      const ind = quotient(index, 2)
+      if (!acc[ind]) acc[ind] = []
+      acc[ind].push(next)
+      return acc
+    }, [])
 
-  return grouped.reduce(
-    (current, [op, val]) => handleExpression([current, op, val]),
-    first,
-  )
+    return grouped.reduce(
+      (current, [op, val]) => handleExpression(ast)([current, op, val]),
+      first,
+    )
+  }
 }
 
-function handleReference(references, name) {
-  const reference = references[name]
-  if (!reference) return Fail(`missing reference '${name}'`)
+function handleReference(ast = false) {
+  return (references, name) => {
+    if (ast) return { type: "reference", value: name }
 
-  const {
-    value: { ok, value },
-  } = reference
-  return ok ? Ok(value) : Fail(`error in referenced cell '${name}'`)
+    const reference = references[name]
+    if (!reference) return Fail(`missing reference '${name}'`)
+
+    const {
+      value: { ok, value },
+    } = reference
+    return ok ? Ok(value) : Fail(`error in referenced cell '${name}'`)
+  }
 }
 
 function addOptionalWhitespace(r, el) {

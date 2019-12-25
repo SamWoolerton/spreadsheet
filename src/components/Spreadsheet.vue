@@ -2,6 +2,8 @@
   <div>
     <h2>Spreadsheet</h2>
 
+    <FormulaInput :id="'test'" :parseValue="parse" />
+
     <div>
       <div class="toolbars">
         <div class="formula-bar">
@@ -14,7 +16,17 @@
           />
           <input v-else disabled value="No cell selected" />
         </div>
-        <div>Formatting bar</div>
+        <div class="formatting-bar">
+          <div class="formatting-block">
+            <div class="toolbar-desc">Align</div>
+            <div
+              v-for="([align, copy]) in [['left', 'Left'], ['center', 'Center'], ['right', 'Right']]"
+              :key="align"
+              @click="setFormat({align})"
+              :class="['toolbar-option', { selected: ((state[selected.pos] || { formatting: { align: false } }).formatting.align || null) === align }]"
+            >{{ copy }}</div>
+          </div>
+        </div>
       </div>
 
       <div class="mx-auto overflow-scroll">
@@ -34,6 +46,9 @@
                     v-if="!cell.editing"
                     @click="selected.pos = cell.self"
                     @dblclick="editCell(cell.self)"
+                    tabindex="0"
+                    @focus="selected.pos = cell.self"
+                    @keydown="cellKeydown(cell.self, $event)"
                     :class="cell.classes"
                   >
                     <div v-if="!cell.value"></div>
@@ -59,6 +74,8 @@
 </template>
 
 <script>
+import FormulaInput from "./FormulaInput"
+
 import { makeParser } from "../parser/index"
 import { Ok, Fail } from "../utility"
 
@@ -90,12 +107,14 @@ const Cell = ({
   deps = [],
   formula = "",
   value = formula ? parse(formula) : Ok(""),
+  formatting = {},
 } = {}) => ({
   refs: set(refs),
   fullRefs: set(fullRefs),
   deps: set(deps),
   formula,
   value,
+  formatting,
 })
 
 startingState.A1 = Cell({ formula: "3" })
@@ -110,9 +129,10 @@ Object.keys(startingState).forEach(
 )
 
 export default {
+  components: { FormulaInput },
   data: () => ({
-    numColumns: between(10, 1, 26 * 26),
-    numRows: between(10, 1, 100),
+    numColumns: between(6, 1, 26 * 26),
+    numRows: between(6, 1, 100),
     state: startingState,
     editing: {
       pos: null,
@@ -122,6 +142,7 @@ export default {
       pos: null,
     },
     valueChanged: null,
+    parse,
   }),
   computed: {
     columns() {
@@ -149,15 +170,20 @@ export default {
       ignore(this.valueChanged)
       return this.baseCells.map(row =>
         row.map(self => {
-          const { value, formula } = this.state[self]
+          const { value, formula, formatting } = this.state[self]
           const editing = self === this.editing.pos
           const selected = self === this.selected.pos
+          const classes =
+            (value.ok === false ? "error " : selected ? "selected " : " ") +
+            Object.entries(formatting)
+              .map(([key, val]) => `${key}-${val}`)
+              .join(" ")
 
           return {
             self,
             editing,
             selected,
-            classes: value.ok === false ? "error" : selected ? "selected" : "",
+            classes,
             value,
             formula,
           }
@@ -171,6 +197,23 @@ export default {
       this.editing.initial = this.state[pos].formula
       await this.$nextTick()
       document.getElementById(`cell-input-${pos}`).focus()
+    },
+    async cellKeydown(position, event) {
+      const cell = this.state[position]
+      const { key } = event
+      if (key === "Delete") {
+        this.editing.initial = cell.formula
+        cell.formula = ""
+        return this.updateCell(position, { target: { value: "" } })
+      }
+
+      const validKey = /^[a-zA-Z0-9_+\-*/&><="]$/.exec(key) !== null
+      if (validKey) {
+        this.editing.initial = cell.formula
+        this.editing.pos = position
+        await this.$nextTick()
+        document.getElementById(`cell-input-${position}`).focus()
+      }
     },
     updateCell(position, event) {
       this.editing.pos = null
@@ -187,6 +230,7 @@ export default {
       // only update references if it parses correctly
       // if there's an error, references will stay as they were until the cell is updated again
       const { ok } = parse(formula)
+      console.log("Formula is", formula, ok)
       if (ok) {
         const cell = this.state[position]
         const { refs } = cell
@@ -253,6 +297,16 @@ export default {
       // cells computed property doesn't update otherwise
       this.valueChanged = value
     },
+    setFormat(update) {
+      const cell = this.state[this.selected.pos]
+      if (!cell) return
+
+      Object.entries(update).forEach(
+        ([key, val]) => (cell.formatting[key] = val),
+      )
+
+      this.valueChanged = JSON.stringify(cell.formatting)
+    },
   },
 }
 </script>
@@ -271,7 +325,7 @@ export default {
 
 .formula-bar {
   max-width: 400px;
-  margin-right: 1em;
+  margin-right: 0.5em;
 
   input {
     width: 100%;
@@ -281,6 +335,35 @@ export default {
 
     &:disabled {
       background: #eee;
+    }
+  }
+}
+
+.formatting-bar {
+  height: 100%;
+  align-self: center;
+
+  .formatting-block {
+    height: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    background: white;
+    margin-right: 0.25rem;
+
+    & > * {
+      height: 100%;
+      padding: 0.5rem 0.75rem;
+    }
+  }
+
+  .toolbar-desc {
+    font-style: italic;
+  }
+
+  .toolbar-option {
+    &.selected {
+      font-weight: bold;
+      background: #dbf4fb;
     }
   }
 }
