@@ -346,14 +346,17 @@ export default {
       let value
 
       // check for circular references
-      if (fullRefs.has(position)) {
+      if (fullRefs.has(position) || deps.has(position)) {
         cell.value = Fail("circular reference")
       } else {
         value = parse(cell.formula)
         if (deepEq(value, initialValue)) return
         cell.value = value
       }
-      deps.forEach(this.recalculateCell)
+      // new set without current cell to prevent infinite loop for self reference
+      const depsWithoutSelf = new Set([...deps])
+      depsWithoutSelf.delete(position)
+      ;[...depsWithoutSelf].forEach(this.recalculateCell)
 
       // cells computed property doesn't update otherwise
       this.valueChanged = value
