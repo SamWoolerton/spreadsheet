@@ -7,7 +7,7 @@
     @keydown.enter="$emit('update', $event)"
     @keydown.esc="$emit('cancel')"
     @focus="setCaretEnd"
-    @blur="$emit('update', $event)"
+    @blur="$emit('updateBlur', $event)"
     class="input"
     spellcheck="false"
   />

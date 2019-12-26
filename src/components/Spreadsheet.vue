@@ -10,6 +10,7 @@
             :id="'formula-bar-input'"
             :parseValue="parse"
             @update="updateCell(selected.pos, $event)"
+            @updateBlur="updateCell(selected.pos, $event, true)"
             @cancel="cancelUpdate(selected.pos)"
             :updateTrigger="inputChanged"
           />
@@ -77,6 +78,7 @@
                     :id="`cell-input-${cell.self}`"
                     :parseValue="parse"
                     @update="updateCell(cell.self, $event)"
+                    @updateBlur="updateCell(cell.self, $event, true)"
                     @cancel="cancelUpdate(cell.self)"
                     :updateTrigger="inputChanged"
                   />
@@ -268,7 +270,7 @@ export default {
       if (wait) await this.$nextTick()
       document.getElementById(id).focus()
     },
-    updateCell(position, event) {
+    updateCell(position, event, blur = false) {
       this.editing.pos = null
 
       // "" is falsy so can get a false positive fallback to an undefined value
@@ -279,8 +281,9 @@ export default {
       }
 
       // identical formula is no-op
-      if (this.editing.initial === formula)
-        return this.focus(`cell-${position}`)
+      if (this.editing.initial === formula) {
+        if (!blur) return this.focus(`cell-${position}`)
+      }
 
       const cell = this.state[position]
       const { refs } = cell
@@ -288,7 +291,7 @@ export default {
 
       if (!eqSets(refs, newRefs)) this.updateReferences(position, refs, newRefs)
 
-      this.focus(`cell-${position}`)
+      if (!blur) this.focus(`cell-${position}`)
 
       this.recalculateCell(position)
     },
