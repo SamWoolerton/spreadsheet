@@ -1,18 +1,17 @@
 <template>
   <div>
-    <h2>Spreadsheet</h2>
-
-    <FormulaInput :id="'test'" :parseValue="parse" />
-
     <div>
       <div class="toolbars">
         <div class="formula-bar">
-          <input
+          <FormulaInput
             v-if="selected.pos"
-            v-model="state[selected.pos].formula"
-            @keydown.enter="updateCell(selected.pos, $event)"
-            @keydown.esc="cancelUpdate(selected.pos)"
-            @blur="updateCell(selected.pos, $event)"
+            :value="state[selected.pos].formula"
+            @input="formulaInput(selected.pos, $event)"
+            :id="'formula-bar-input'"
+            :parseValue="parse"
+            @update="updateCell(selected.pos, $event)"
+            @cancel="cancelUpdate(selected.pos)"
+            :updateTrigger="inputChanged"
           />
           <input v-else disabled value="No cell selected" />
         </div>
@@ -35,14 +34,12 @@
                       .formatting.align || null) === align,
                 },
               ]"
-            >
-              {{ copy }}
-            </div>
+            >{{ copy }}</div>
           </div>
         </div>
       </div>
 
-      <div class="mx-auto overflow-scroll">
+      <div class="mx-auto">
         <table>
           <thead>
             <tr>
@@ -66,20 +63,22 @@
                     :class="cell.classes"
                   >
                     {{
-                      cell.value
-                        ? cell.value.ok
-                          ? cell.value.value
-                          : `#ERR: ${cell.value.message}`
-                        : ""
+                    cell.value
+                    ? cell.value.ok
+                    ? cell.value.value
+                    : `#ERR: ${cell.value.message}`
+                    : ""
                     }}
                   </div>
-                  <input
+                  <FormulaInput
                     v-else
+                    :value="state[cell.self].formula"
+                    @input="formulaInput(cell.self, $event)"
                     :id="`cell-input-${cell.self}`"
-                    v-model="state[cell.self].formula"
-                    @keyup.enter="updateCell(cell.self, $event)"
-                    @keydown.esc="cancelUpdate(cell.self)"
-                    @blur="updateCell(cell.self, $event)"
+                    :parseValue="parse"
+                    @update="updateCell(cell.self, $event)"
+                    @cancel="cancelUpdate(cell.self)"
+                    :updateTrigger="inputChanged"
                   />
                 </div>
               </td>
@@ -164,6 +163,7 @@ export default {
       pos: null,
     },
     valueChanged: null,
+    inputChanged: null,
     parse,
   }),
   computed: {
@@ -220,12 +220,19 @@ export default {
       this.focus(`cell-input-${pos}`)
     },
     async cellKeydown(position, event) {
+      if (event.ctrlKey || event.altKey || event.metaKey) return
+
       const cell = this.state[position]
       const { key } = event
       if (key === "Delete") {
         this.editing.initial = cell.formula
         cell.formula = ""
         return this.updateCell(position, { target: { value: "" } })
+      }
+
+      if (key === "Enter") {
+        this.editCell(this.selected.pos)
+        return event.preventDefault()
       }
 
       if (key.startsWith("Arrow")) {
@@ -253,6 +260,7 @@ export default {
       if (validKey) {
         this.editing.initial = cell.formula
         this.editing.pos = position
+        cell.formula = ""
         this.focus(`cell-input-${position}`)
       }
     },
@@ -263,14 +271,16 @@ export default {
     updateCell(position, event) {
       this.editing.pos = null
 
-      let formula = event.target.value
+      // "" is falsy so can get a false positive fallback to an undefined value
+      let formula = event.target.value || event.target.textContent || ""
       if (formula === "=") {
         formula = ""
         this.state[position].formula = ""
       }
 
       // identical formula is no-op
-      if (this.editing.initial === formula) return
+      if (this.editing.initial === formula)
+        return this.focus(`cell-${position}`)
 
       const cell = this.state[position]
       const { refs } = cell
@@ -347,6 +357,10 @@ export default {
 
       this.valueChanged = JSON.stringify(cell.formatting)
     },
+    formulaInput(pos, event) {
+      this.state[pos].formula = event.target.textContent
+      this.inputChanged = event.target.textContent
+    },
   },
 }
 </script>
@@ -401,6 +415,8 @@ export default {
   }
 
   .toolbar-option {
+    cursor: pointer;
+
     &.selected {
       font-weight: bold;
       background: #f0f0f0;
@@ -499,7 +515,8 @@ td {
     }
   }
 
-  input {
+  input,
+  .input {
     position: absolute;
     top: 0;
     bottom: 0;
@@ -509,6 +526,8 @@ td {
     border: none;
     z-index: 5;
     padding: 0 0.25em;
+    white-space: nowrap;
+    width: auto;
   }
 }
 </style>

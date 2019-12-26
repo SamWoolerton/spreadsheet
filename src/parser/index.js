@@ -98,6 +98,7 @@ export function makeParser(references, { ast = false } = {}) {
     try {
       // @ts-ignore
       if (input === "") return Ok("")
+      if (input === "=") return Ok("=")
       return parser.tryParse(input)
     } catch ({ message }) {
       if (!suppress) console.log("Parsing error \n", message)

@@ -3,6 +3,7 @@ import { regen } from "./regen_from_ast"
 const deepEq = (o1, o2) => JSON.stringify(o1) === JSON.stringify(o2)
 
 const tests = [
+  ["Blank string", { ok: true, value: "" }, ``],
   ["Number", { type: "number", value: 3 }, `3`],
   ["Larger number", { type: "number", value: 123 }, `123`],
   ["String", { type: "string", value: "str" }, `"str"`],

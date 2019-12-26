@@ -10,6 +10,7 @@ const state = {
 const parse = makeParser(state)
 
 const tests = [
+  ["Blank string", ``, Ok("")],
   ["Number", `3`, Ok(3)],
   ["Larger number", `123`, Ok(123)],
   ["String", `"str"`, Ok("str")],
@@ -28,8 +29,16 @@ const tests = [
   ["Chained functions", `=increment(2) + increment(3) + increment(4)`, Ok(12)],
   ["Expression inside function", `=increment(1+2)`, Ok(4)],
   ["Function with multiple arguments", `=add(2,4)`, Ok(6)],
-  ["Function with too many arguments", `=increment(2,4)`, Fail("too many arguments passed to 'increment'")],
-  ["Function with not enough arguments", `=add(2)`, Fail("not enough arguments passed to 'add'")],
+  [
+    "Function with too many arguments",
+    `=increment(2,4)`,
+    Fail("too many arguments passed to 'increment'"),
+  ],
+  [
+    "Function with not enough arguments",
+    `=add(2)`,
+    Fail("not enough arguments passed to 'add'"),
+  ],
   ["Function with underscore", `=to_power(3,2)`, Ok(9)],
   [
     "String concat (variadic)",

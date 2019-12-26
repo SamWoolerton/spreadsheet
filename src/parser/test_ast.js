@@ -1,5 +1,5 @@
 import { makeParser } from "./index"
-import { Fail } from "../utility"
+import { Ok, Fail } from "../utility"
 
 const deepEq = (o1, o2) => JSON.stringify(o1) === JSON.stringify(o2)
 
@@ -8,6 +8,7 @@ const state = {}
 const parse = makeParser(state, { ast: true })
 
 const tests = [
+  ["Blank string", ``, Ok("")],
   ["Number", `3`, { type: "number", value: 3 }],
   ["Larger number", `123`, { type: "number", value: 123 }],
   ["String", `"str"`, { type: "string", value: "str" }],

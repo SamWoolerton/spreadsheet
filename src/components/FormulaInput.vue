@@ -1,8 +1,16 @@
 <template>
-  <div>
-    <div>Input below</div>
-    <div :id="id" @input="handleInput" contenteditable v-html="value" />
-  </div>
+  <div
+    :id="id"
+    contenteditable
+    v-html="highlighted"
+    @input="handleInput"
+    @keydown.enter="$emit('update', $event)"
+    @keydown.esc="$emit('cancel')"
+    @focus="setCaretEnd"
+    @blur="$emit('update', $event)"
+    class="input"
+    spellcheck="false"
+  />
 </template>
 
 <script>
@@ -19,39 +27,74 @@ export default {
       type: String,
       required: true,
     },
+    value: {
+      type: String,
+      default: "",
+    },
+    // don't have to use this for it to trigger a repaint
+    updateTrigger: {
+      type: String,
+      default: "",
+    },
     parseValue: {
       type: Function,
       required: true,
     },
   },
   data: () => ({
-    value: "=add(2,3)",
     el: null,
+    highlighted: "",
+    cursor: 0,
   }),
+  computed: {
+    active() {
+      return document.activeElement === this.el
+    },
+  },
+  watch: {
+    value(next) {
+      this.processInput(next)
+    },
+  },
   mounted() {
     this.el = document.getElementById(this.id)
     this.processInput(this.value, false)
   },
   methods: {
-    handleInput(e) {
-      const { innerText: val } = e.target
-      this.processInput(val)
+    handleInput(event) {
+      if (event.target.textContent !== this.value) {
+        this.cursor = getCaret(this.el)
+        this.$emit("input", event)
+      }
     },
     async processInput(val, set = true) {
-      const initialCaret = getCaret(this.el)
+      await this.$nextTick()
+      const initialCaret = this.cursor
 
-      // AST can mask errors but parser will return error object to top level
-      // this keeps existing spans etc in place
-      if (!this.parseValue(val, { suppress: true }).ok) return
+      // if syntax error then default back to formula passed in
+      if (!this.parseValue(val, { suppress: true }).ok) {
+        this.highlighted = this.value
+        await this.$nextTick()
+        return this.setCaret(this.el, initialCaret)
+      }
 
       const ast = parse(val)
       const { reg } = regen(ast)
-      this.value = reg
+      this.highlighted = reg
 
-      if (set && this.value.length > 0) {
+      if (set && this.value.length > 0 && document.activeElement === this.el) {
         await this.$nextTick()
-        setCaret(this.el, initialCaret)
+        this.setCaret(this.el, initialCaret)
       }
+    },
+    async setCaretEnd() {
+      if (document.activeElement === this.el) {
+        await this.$nextTick()
+        setCaret(this.el, this.el.textContent.length)
+      }
+    },
+    setCaret(...args) {
+      document.activeElement === this.el && setCaret(...args)
     },
   },
 }
@@ -65,7 +108,7 @@ function setCaret(root, pos) {
 
   // find node
   const nodeContains = (node, current, pos) =>
-    pos > current && pos <= node.textContent.length + current
+    pos >= current && pos <= node.textContent.length + current
   function getNode(node, current = 0) {
     return [...node.childNodes].reduce(
       (acc, next) => {
@@ -144,15 +187,28 @@ function getCaret(element) {
 </script>
 
 <style lang="scss">
+.input {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.5em 1em;
+  background: white;
+  border: none;
+  color: #777;
+}
+
 span {
   &.input-function {
-    color: #ce6d7e;
+    color: #b1384d;
+  }
+  &.input-reference {
+    color: #a014ed;
   }
   &.input-string {
-    color: #e57b27;
+    color: #d26f21;
   }
   &.input-number {
-    color: #2626a9;
+    color: #335caf;
   }
   &.input-boolean {
     color: green;
