@@ -304,29 +304,13 @@ export default {
       return set([...formula.matchAll(referenceRegex)].map(([ref]) => ref))
     },
     updateReferences(self, current, next) {
-      const childFullRefs = [...next]
-        .map(pos => [...this.state[pos].fullRefs])
-        .flat()
-      const fullRefs = set([...next, ...childFullRefs])
-      console.log(
-        "updating references",
-        self,
-        fullRefs,
-        childFullRefs,
-        current,
-        next,
-      )
-
-      // update cell references
       this.state[self].refs = next
-      this.state[self].fullRefs = fullRefs
 
       // calc changes
       const changes = {
         add: [],
         delete: [],
       }
-      console.log("Changes", self, changes)
       const all = set([...current, ...next])
       all.forEach(pos => {
         if (!current.has(pos)) {
@@ -337,8 +321,23 @@ export default {
       })
 
       // handle dependencies
-      changes.delete.forEach(ref => this.state[ref].deps.delete(self))
-      changes.add.forEach(ref => this.state[ref].deps.add(self))
+      changes.add.forEach(pos => this.state[pos].deps.add(self))
+      changes.delete.forEach(pos => this.state[pos].deps.delete(self))
+
+      changes.add.forEach(this.dependenciesUpdated)
+      changes.delete.forEach(this.dependenciesUpdated)
+      this.dependenciesUpdated(self)
+    },
+    dependenciesUpdated(pos) {
+      const cell = this.state[pos]
+
+      const childFullRefs = [...cell.refs]
+        .map(c => [...this.state[c].fullRefs])
+        .flat()
+      const fullRefs = set([...cell.refs, ...childFullRefs])
+
+      // update cell references
+      this.state[pos].fullRefs = fullRefs
     },
     recalculateCell(position) {
       // destructuring in two steps to get the reference for later
