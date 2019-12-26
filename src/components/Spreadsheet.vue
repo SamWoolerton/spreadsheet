@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div>
+    <div class="parent-container">
       <div class="toolbars">
         <div class="formula-bar">
           <FormulaInput
@@ -40,7 +40,7 @@
         </div>
       </div>
 
-      <div class="mx-auto">
+      <div class="mx-auto table-container">
         <table>
           <thead>
             <tr>
@@ -154,8 +154,8 @@ Object.keys(startingState).forEach(
 export default {
   components: { FormulaInput },
   data: () => ({
-    numColumns: between(6, 1, 26 * 26),
-    numRows: between(6, 1, 100),
+    numColumns: between(30, 1, 26 * 26),
+    numRows: between(30, 1, 100),
     state: startingState,
     editing: {
       pos: null,
@@ -380,6 +380,21 @@ export default {
 </script>
 
 <style lang="scss">
+.parent-container {
+  height: 100vh;
+  max-height: 100vh;
+
+  .toolbars {
+    height: 3rem;
+  }
+
+  .table-container {
+    height: calc(100vh - 3rem);
+    max-height: calc(100vh - 3rem);
+    overflow: scroll;
+  }
+}
+
 .toolbars {
   display: flex;
   flex-wrap: wrap;
