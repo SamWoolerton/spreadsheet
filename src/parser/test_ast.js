@@ -22,7 +22,10 @@ const tests = [
   [
     "Equation with number",
     `=7`,
-    { type: "formula", value: { type: "number", value: 7 } },
+    {
+      type: "formula",
+      value: { type: "expression", value: [{ type: "number", value: 7 }] },
+    },
   ],
   [
     "Basic expression",
@@ -30,11 +33,34 @@ const tests = [
     {
       type: "formula",
       value: {
-        type: "operator",
+        type: "expression",
         value: [
-          "+",
           { type: "number", value: 1 },
+          {
+            type: "operator",
+            value: "+",
+          },
           { type: "number", value: 2 },
+        ],
+      },
+    },
+  ],
+  [
+    "Basic expression with spaces",
+    `=3 + 6`,
+    {
+      type: "formula",
+      value: {
+        type: "expression",
+        value: [
+          { type: "number", value: 3 },
+          { type: "whitespace", value: " " },
+          {
+            type: "operator",
+            value: "+",
+          },
+          { type: "whitespace", value: " " },
+          { type: "number", value: 6 },
         ],
       },
     },
@@ -45,19 +71,27 @@ const tests = [
     {
       type: "formula",
       value: {
-        type: "function",
+        type: "expression",
         value: [
-          "",
-          [
-            {
-              type: "operator",
-              value: [
-                "+",
-                { type: "number", value: 3 },
-                { type: "number", value: 4 },
+          {
+            type: "function",
+            value: [
+              "",
+              [
+                {
+                  type: "expression",
+                  value: [
+                    { type: "number", value: 3 },
+                    {
+                      type: "operator",
+                      value: "+",
+                    },
+                    { type: "number", value: 4 },
+                  ],
+                },
               ],
-            },
-          ],
+            ],
+          },
         ],
       },
     },
@@ -68,10 +102,13 @@ const tests = [
     {
       type: "formula",
       value: {
-        type: "operator",
+        type: "expression",
         value: [
-          "/",
           { type: "number", value: 1 },
+          {
+            type: "operator",
+            value: "/",
+          },
           { type: "number", value: 0 },
         ],
       },
@@ -83,43 +120,77 @@ const tests = [
     {
       type: "formula",
       value: {
-        type: "function",
-        value: ["increment", [{ type: "number", value: 4 }]],
+        type: "expression",
+        value: [
+          {
+            type: "function",
+            value: [
+              "increment",
+              [{ type: "expression", value: [{ type: "number", value: 4 }] }],
+            ],
+          },
+        ],
       },
     },
   ],
-  // ["Chained functions", `=increment(2) + increment(3) + increment(4)`, Ok(12)],
-  // ["Expression inside function", `=increment(1+2)`, Ok(4)],
-  // ["Function with multiple arguments", `=add(2,4)`, Ok(6)],
-  // ["Function with underscore", `=to_power(3,2)`, Ok(9)],
-  // [
-  //   "String concat",
-  //   `=join(" ","test", "another", "to", "concat")`,
-  //   Ok("test another to concat"),
-  // ],
-  // [
-  //   "Not real function",
-  //   `=not_real_fn(3,2)`,
-  //   Fail("unsupported function 'not_real_fn'"),
-  // ],
-  // [
-  //   "Operation on not real function",
-  //   `=4 + not_real_fn(3,2)`,
-  //   Fail("unsupported function 'not_real_fn'"),
-  // ],
-  // ["Nested function", `=increment(add(2,3))`, Ok(6)],
-  // ["Nested function with multiple arguments", `=add(5,add(2,3))`, Ok(10)],
-  // ["Nested function with spaces", `=add(5, add(2,3))`, Ok(10)],
-  // ["Nested function with many spaces", `=add(5 , add(2,3))`, Ok(10)],
-  // ["Chained expression with function", `=2*increment(3)`, Ok(8)],
-  // ["Chained expressions", `=1+2-3+17-5`, Ok(12)],
-  // ["Brackets precedence", `=2*(3+4)`, Ok(14)],
-  // ["If function with expression", `=if(4>2,10,3)`, Ok(10)],
-  // ["Parser error", `=#`, Fail("syntax"), { suppress: true }],
+  [
+    "Function argument order",
+    `=join("a","b","c","d","e")`,
+    {
+      type: "formula",
+      value: {
+        type: "expression",
+        value: [
+          {
+            type: "function",
+            value: [
+              "join",
+              [
+                { type: "expression", value: [{ type: "string", value: "a" }] },
+                { type: "expression", value: [{ type: "string", value: "b" }] },
+                { type: "expression", value: [{ type: "string", value: "c" }] },
+                { type: "expression", value: [{ type: "string", value: "d" }] },
+                { type: "expression", value: [{ type: "string", value: "e" }] },
+              ],
+            ],
+          },
+        ],
+      },
+    },
+  ],
+  [
+    "Function with spaces",
+    `=add(2, 3)`,
+    {
+      type: "formula",
+      value: {
+        type: "expression",
+        value: [
+          {
+            type: "function",
+            value: [
+              "add",
+              [
+                { type: "expression", value: [{ type: "number", value: 2 }] },
+                { type: "whitespace", value: " " },
+                { type: "expression", value: [{ type: "number", value: 3 }] },
+              ],
+            ],
+          },
+        ],
+      },
+    },
+  ],
   [
     "Reference",
     `=A1`,
-    { type: "formula", value: { type: "reference", value: "A1" } },
+    {
+      type: "formula",
+      value: {
+        type: "expression",
+        value: [{ type: "reference", value: "A1" }],
+      },
+    },
   ],
   [
     "Reference without equals is error",
@@ -133,18 +204,17 @@ const tests = [
     {
       type: "formula",
       value: {
-        type: "operator",
+        type: "expression",
         value: [
-          "+",
           { type: "number", value: 5 },
+          { type: "whitespace", value: " " },
+          { type: "operator", value: "+" },
+          { type: "whitespace", value: " " },
           { type: "reference", value: "A1" },
         ],
       },
     },
   ],
-  // ["Reference in chained expression", `=5 + (B3 * 2)`, Ok(31)],
-  // ["Reference in function", `=increment(A1)`, Ok(6)],
-  // ["Reference in nested function", `=add(increment(B3), 17)`, Ok(31)],
 ]
 
 const outcomes = tests
@@ -157,6 +227,8 @@ const outcomes = tests
       input,
       expected,
       parsed,
+      es: JSON.stringify(expected),
+      ep: JSON.stringify(parsed),
     }
   })
   .filter(({ success }) => !success)

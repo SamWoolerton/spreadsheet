@@ -305,6 +305,14 @@ export default {
         .map(pos => [...this.state[pos].fullRefs])
         .flat()
       const fullRefs = set([...next, ...childFullRefs])
+      console.log(
+        "updating references",
+        self,
+        fullRefs,
+        childFullRefs,
+        current,
+        next,
+      )
 
       // update cell references
       this.state[self].refs = next
@@ -315,6 +323,7 @@ export default {
         add: [],
         delete: [],
       }
+      console.log("Changes", self, changes)
       const all = set([...current, ...next])
       all.forEach(pos => {
         if (!current.has(pos)) {

@@ -2,182 +2,213 @@ import { regen } from "./regen_from_ast"
 
 const deepEq = (o1, o2) => JSON.stringify(o1) === JSON.stringify(o2)
 
+// order is flipped so that tests can use the same data as to generate AST
 const tests = [
-  ["Blank string", { ok: true, value: "" }, ``],
-  ["Number", { type: "number", value: 3 }, `3`],
-  ["Larger number", { type: "number", value: 123 }, `123`],
-  ["String", { type: "string", value: "str" }, `"str"`],
+  ["Number", `3`, { type: "number", value: 3 }],
+  ["Larger number", `123`, { type: "number", value: 123 }],
+  ["String", `"str"`, { type: "string", value: "str" }],
   [
     "String with multiple words",
-    { type: "string", value: "multiple words" },
     `"multiple words"`,
+    { type: "string", value: "multiple words" },
   ],
-  ["Boolean true", { type: "boolean", value: true }, `true`],
-  ["Boolean false", { type: "boolean", value: false }, `false`],
+  ["Boolean true", `true`, { type: "boolean", value: true }],
+  ["Boolean false", `false`, { type: "boolean", value: false }],
   [
     "Equation with number",
+    `=7`,
     {
       type: "formula",
-      value: { type: "number", value: 7 },
+      value: { type: "expression", value: [{ type: "number", value: 7 }] },
     },
-    `=7`,
   ],
   [
     "Basic expression",
+    `=1+2`,
     {
       type: "formula",
       value: {
-        type: "operator",
+        type: "expression",
         value: [
-          "+",
           { type: "number", value: 1 },
+          {
+            type: "operator",
+            value: "+",
+          },
           { type: "number", value: 2 },
         ],
       },
     },
-    `=1 + 2`,
   ],
   [
-    "Basic expression with brackets",
+    "Basic expression with spaces",
+    `=3 + 6`,
     {
       type: "formula",
       value: {
-        type: "function",
+        type: "expression",
         value: [
-          "",
-          [
-            {
-              type: "operator",
-              value: [
-                "+",
-                { type: "number", value: 3 },
-                { type: "number", value: 4 },
-              ],
-            },
-          ],
+          { type: "number", value: 3 },
+          { type: "whitespace", value: " " },
+          {
+            type: "operator",
+            value: "+",
+          },
+          { type: "whitespace", value: " " },
+          { type: "number", value: 6 },
         ],
       },
     },
-    `=(3 + 4)`,
   ],
   [
-    "Divide by 0",
+    "Basic expression with brackets",
+    `=(3+4)`,
     {
       type: "formula",
       value: {
-        type: "operator",
+        type: "expression",
         value: [
-          "/",
+          {
+            type: "function",
+            value: [
+              "",
+              [
+                {
+                  type: "expression",
+                  value: [
+                    { type: "number", value: 3 },
+                    {
+                      type: "operator",
+                      value: "+",
+                    },
+                    { type: "number", value: 4 },
+                  ],
+                },
+              ],
+            ],
+          },
+        ],
+      },
+    },
+  ],
+  [
+    "Divide by 0",
+    `=1/0`,
+    {
+      type: "formula",
+      value: {
+        type: "expression",
+        value: [
           { type: "number", value: 1 },
+          {
+            type: "operator",
+            value: "/",
+          },
           { type: "number", value: 0 },
         ],
       },
     },
-    `=1 / 0`,
   ],
   [
     "Function",
-    {
-      type: "formula",
-      value: {
-        type: "function",
-        value: ["increment", [{ type: "number", value: 4 }]],
-      },
-    },
     `=increment(4)`,
-  ],
-  // // ["Chained functions", `=increment(2) + increment(3) + increment(4)`, Ok(12)],
-  // // [
-  // //   "String concat",
-  // //   `=join(" ","test", "another", "to", "concat")`,
-  // //   Ok("test another to concat"),
-  // // ],
-  [
-    "Nested function",
     {
       type: "formula",
       value: {
-        type: "function",
+        type: "expression",
         value: [
-          "increment",
-          [
-            {
-              type: "function",
-              value: ["increment", [{ type: "number", value: 1 }]],
-            },
-          ],
+          {
+            type: "function",
+            value: [
+              "increment",
+              [{ type: "expression", value: [{ type: "number", value: 4 }] }],
+            ],
+          },
         ],
       },
     },
-    `=increment(increment(1))`,
   ],
   [
-    "Deep nested function",
+    "Function argument order",
+    `=join("a","b","c","d","e")`,
     {
       type: "formula",
       value: {
-        type: "function",
+        type: "expression",
         value: [
-          "increment",
-          [
-            {
-              type: "function",
-              value: [
-                "add",
-                [
-                  {
-                    type: "function",
-                    value: ["increment", [{ type: "number", value: 1 }]],
-                  },
-                  { type: "number", value: 3 },
-                ],
+          {
+            type: "function",
+            value: [
+              "join",
+              [
+                { type: "expression", value: [{ type: "string", value: "a" }] },
+                { type: "expression", value: [{ type: "string", value: "b" }] },
+                { type: "expression", value: [{ type: "string", value: "c" }] },
+                { type: "expression", value: [{ type: "string", value: "d" }] },
+                { type: "expression", value: [{ type: "string", value: "e" }] },
               ],
-            },
-          ],
+            ],
+          },
         ],
       },
     },
-    `=increment(add(increment(1), 3))`,
+  ],
+  [
+    "Function with spaces",
+    `=add(2, 3)`,
+    {
+      type: "formula",
+      value: {
+        type: "expression",
+        value: [
+          {
+            type: "function",
+            value: [
+              "add",
+              [
+                { type: "expression", value: [{ type: "number", value: 2 }] },
+                { type: "whitespace", value: " " },
+                { type: "expression", value: [{ type: "number", value: 3 }] },
+              ],
+            ],
+          },
+        ],
+      },
+    },
   ],
   [
     "Reference",
-    {
-      type: "formula",
-      value: { type: "reference", value: "A1" },
-    },
     `=A1`,
-  ],
-  [
-    "Reference in expression",
     {
       type: "formula",
       value: {
-        type: "operator",
+        type: "expression",
+        value: [{ type: "reference", value: "A1" }],
+      },
+    },
+  ],
+  [
+    "Reference in expression",
+    `=5 + A1`,
+    {
+      type: "formula",
+      value: {
+        type: "expression",
         value: [
-          "+",
           { type: "number", value: 5 },
+          { type: "whitespace", value: " " },
+          { type: "operator", value: "+" },
+          { type: "whitespace", value: " " },
           { type: "reference", value: "A1" },
         ],
       },
     },
-    `=5 + A1`,
-  ],
-  [
-    "Reference in function",
-    {
-      type: "formula",
-      value: {
-        type: "function",
-        value: ["increment", [{ type: "reference", value: "A1" }]],
-      },
-    },
-    `=increment(A1)`,
   ],
 ]
 
 const outcomes = tests
   // @ts-ignore
-  .map(([description, ast, expected]) => {
+  .map(([description, expected, ast]) => {
     const { reg: regenerated } = regen(ast, { highlight: false })
     return {
       description,

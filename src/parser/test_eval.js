@@ -30,6 +30,11 @@ const tests = [
   ["Expression inside function", `=increment(1+2)`, Ok(4)],
   ["Function with multiple arguments", `=add(2,4)`, Ok(6)],
   [
+    "Function arguments applied in order",
+    `=join(" ", "a", "b", "c", "d", "e")`,
+    Ok("a b c d e"),
+  ],
+  [
     "Function with too many arguments",
     `=increment(2,4)`,
     Fail("too many arguments passed to 'increment'"),

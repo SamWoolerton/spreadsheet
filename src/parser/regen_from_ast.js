@@ -11,13 +11,13 @@ export function regen(ast, { highlight = true } = {}) {
         ? handleString(value)
         : type === "boolean"
         ? String(value)
-        : type === "reference"
+        : type === "reference" || type === "operator" || type === "whitespace"
         ? value
         : type === "formula"
         ? rec("=", value)
         : type === "function"
         ? handleFunction(value)
-        : type === "operator"
+        : type === "expression"
         ? handleExpression(value)
         : value
 
@@ -31,11 +31,16 @@ export function regen(ast, { highlight = true } = {}) {
   }
 
   function handleFunction([fn, args]) {
-    return `${fn}(${args.map(a => rec("", a)).join(", ")})`
+    // recurse over arguments
+    // whitespace complicates things - recreating a .join() by appending a comma (if not whitespace) and then slicing off the final comma
+    return `${fn}(${args
+      .map(a => rec("", a) + (a.type === "whitespace" ? "" : ","))
+      .join("")
+      .slice(0, -1)})`
   }
 
-  function handleExpression([op, a, b]) {
-    return `${rec("", a)} ${op} ${rec("", b)}`
+  function handleExpression(values) {
+    return values.map(val => rec("", val)).join("")
   }
 }
 

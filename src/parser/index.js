@@ -1,6 +1,8 @@
 import * as P from "parsimmon"
 import { Ok, Fail, quotient, getFirst, isObject } from "../utility"
 
+const flatten = arr => [].concat(...arr)
+
 const operators = {
   "+": (a, b) => a + b,
   "-": (a, b) => a - b,
@@ -41,14 +43,20 @@ export function makeParser(references, { ast = false } = {}) {
     main: r => P.alt(r.formula, r.primitive),
     formula: r =>
       P.seq(r.eq, r.optWhitespace, P.alt(r.expression, r.function))
-        .map(removeNonValues)
+        .map(removeNonValues(ast))
         .map(getFirst)
         .map(value => (ast ? { type: "formula", value } : value))
         .desc("formula"),
 
     expression: r =>
-      P.alt(r.function, r.reference, r.operator, r.primitive)
-        .sepBy(P.alt(P.whitespace, P.string("")))
+      addOptionalWhitespace(
+        r,
+        P.alt(r.function, r.reference, r.operator, r.primitive),
+      )
+        .sepBy(P.string(""))
+        // TODO:
+        // P.alt(r.function, r.reference, r.operator, r.primitive)
+        //   .sepBy(P.alt(P.whitespace, P.string("")))
         .map(handleExtendedExpressions(ast))
         .desc("expression without brackets"),
 
@@ -57,7 +65,8 @@ export function makeParser(references, { ast = false } = {}) {
     lbracket: () => P.string("("),
     rbracket: () => P.string(")"),
     comma: () => P.string(","),
-    optWhitespace: () => P.regexp(/\s?/).desc("optional whitespace"),
+    whitespace: () => P.regexp(/\s/).desc("whitespace"),
+    optWhitespace: () => P.regexp(/\s*/).desc("optional whitespace"),
 
     primitive: r => P.alt(r.boolean, r.string, r.number).desc("primitive"),
     string: () =>
@@ -80,7 +89,7 @@ export function makeParser(references, { ast = false } = {}) {
       P.seq(
         r.functionName,
         r.lbracket
-          .then(r.functionArg.sepBy(addOptionalWhitespace(r, r.comma)))
+          .then(addOptionalWhitespace(r, r.functionArg).sepBy(r.comma))
           .skip(r.rbracket),
       )
         .map(handleFunction(ast))
@@ -108,24 +117,15 @@ export function makeParser(references, { ast = false } = {}) {
 }
 
 // utilities
-function handleExpression(ast = false) {
-  return ([a, op, b]) => {
-    if (ast) {
-      return {
-        type: "operator",
-        value: [op, a, b],
-      }
-    }
+function handleExpression([a, op, b]) {
+  if (!a.ok) return a
+  if (!b.ok) return b
 
-    if (!a.ok) return a
-    if (!b.ok) return b
-
-    try {
-      const result = operators[op](a.value, b.value)
-      return isObject(result) ? result : Ok(result)
-    } catch (err) {
-      return Fail("invalid operation")
-    }
+  try {
+    const result = operators[op](a.value, b.value)
+    return isObject(result) ? result : Ok(result)
+  } catch (err) {
+    return Fail("invalid operation")
   }
 }
 
@@ -134,16 +134,29 @@ function removeEnclosingQuotes(str) {
 }
 
 function handleFunction(ast = false) {
-  return ([name, args]) => {
+  return ([name, initArgs]) => {
+    const args = initArgs.reduce(
+      (acc, next) => [
+        ...acc,
+        ...next
+          .filter(arg => (ast ? arg !== "" : typeof arg !== "string"))
+          .map(value =>
+            typeof value === "string" ? { type: "whitespace", value } : value,
+          ),
+      ],
+      [],
+    )
     if (ast) return { type: "function", value: [name, args] }
 
     const func = functions[name]
     if (!func) return Fail(`unsupported function '${name}'`)
     if (!func.variadic) {
-      if (func.fn.length < args.length)
+      if (func.fn.length < args.length) {
         return Fail(`too many arguments passed to '${name}'`)
-      if (func.fn.length > args.length)
+      }
+      if (func.fn.length > args.length) {
         return Fail(`not enough arguments passed to '${name}'`)
+      }
     }
 
     const [fail] = args.filter(({ ok }) => !ok)
@@ -153,8 +166,41 @@ function handleFunction(ast = false) {
   }
 }
 
+/**
+ * logic previously:
+ * get first element and then rest as pairs
+ * if ast then reduce over it to construct a tree structure
+ * else reduce to get value
+ *
+ * logic now:
+ * flatten inputs
+ * if not ast do as above
+ * if ast then just recurse into tree structure?
+ */
+
 function handleExtendedExpressions(ast = false) {
-  return ([first, ...rest]) => {
+  return init => {
+    const processed = flatten(init).filter(v => v !== "")
+
+    if (ast) {
+      const value = processed.map(value =>
+        typeof value === "string"
+          ? operatorsList.includes(value)
+            ? { type: "operator", value }
+            : { type: "whitespace", value }
+          : value,
+      )
+
+      return {
+        type: "expression",
+        value,
+      }
+    }
+
+    const [first, ...rest] = processed.filter(
+      value => typeof value !== "string" || operatorsList.includes(value),
+    )
+
     if (rest.length === 0) return first
 
     const grouped = rest.reduce((acc, next, index) => {
@@ -165,7 +211,7 @@ function handleExtendedExpressions(ast = false) {
     }, [])
 
     return grouped.reduce(
-      (current, [op, val]) => handleExpression(ast)([current, op, val]),
+      (current, [op, val]) => handleExpression([current, op, val]),
       first,
     )
   }
@@ -189,7 +235,9 @@ function addOptionalWhitespace(r, el) {
   return P.seq(r.optWhitespace, el, r.optWhitespace)
 }
 
-function removeNonValues(args) {
-  const blacklist = ["=", "(", ")", "", " "]
-  return args.filter(val => !blacklist.includes(val))
+function removeNonValues(ast) {
+  return args => {
+    const blacklist = ["=", "(", ")", "", ...(ast ? [] : [" "])]
+    return args.filter(val => !blacklist.includes(val))
+  }
 }
