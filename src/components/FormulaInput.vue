@@ -25,7 +25,7 @@ export default {
     },
   },
   data: () => ({
-    value: "=increment(4)",
+    value: "=add(2,3)",
     el: null,
   }),
   mounted() {
@@ -39,22 +39,17 @@ export default {
     },
     async processInput(val, set = true) {
       const initialCaret = getCaret(this.el)
-      console.log("Caret starts at", initialCaret)
 
       // AST can mask errors but parser will return error object to top level
       // this keeps existing spans etc in place
       if (!this.parseValue(val, { suppress: true }).ok) return
 
       const ast = parse(val)
-      // console.log("ast is", ast)
-      // const { reg, pos } = regen(ast, { initialCaret })
-      const { reg } = regen(ast, { initialCaret })
-      // console.log("regen output", reg, pos)
+      const { reg } = regen(ast)
       this.value = reg
 
       if (set && this.value.length > 0) {
         await this.$nextTick()
-        // setCaret(this.el, pos.fn(this.el.childNodes), pos.offset)
         setCaret(this.el, initialCaret)
       }
     },
@@ -72,27 +67,13 @@ function setCaret(root, pos) {
   const nodeContains = (node, current, pos) =>
     pos > current && pos <= node.textContent.length + current
   function getNode(node, current = 0) {
-    console.log(
-      "Checking a node",
-      nodeContains(node, current, pos),
-      node,
-      current,
-      pos,
-      node.textContent,
-    )
     return [...node.childNodes].reduce(
       (acc, next) => {
+        // otherwise child nodes after found will still increment length and throw it off
+        if (acc.found) return acc
+
         const text = next.textContent
         const contains = nodeContains(next, acc.current, pos)
-        console.log(
-          "Checking child",
-          contains,
-          next.nodeName,
-          next,
-          text,
-          acc.current,
-          pos,
-        )
         // if this node doesn't have it, return acc (go straight to next child node)
         if (!contains) {
           return {
@@ -101,32 +82,26 @@ function setCaret(root, pos) {
           }
         }
 
-        console.log("We found the node, so what's the name?", next.nodeName)
-
         // if text node then we found it! Return the node
         if (next.nodeName === "#text") {
-          console.log("Found in text node", text)
           acc.node = next
           acc.current += text.length
           acc.len = text.length
+          acc.found = true
           return acc
         }
 
         // else need to loop through child nodes to find it
         return getNode(next, acc.current)
       },
-      { node, current, len: null },
+      { node, current, len: null, found: false },
     )
   }
   const { node, current: end, len } = getNode(root, 0, pos)
 
   // calculate offset
-  console.log("########################")
-  // const offset = len - (end - pos)
-  // const offset = end - pos
   const start = end - len
   const offset = pos - start
-  console.log("Found the node", node, { end, pos, len, start, offset })
 
   // set caret
   setCaretInNode(node, offset)

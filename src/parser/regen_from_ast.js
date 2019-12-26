@@ -1,13 +1,5 @@
-export function regen(ast, { highlight = true, caret = 0 } = {}) {
-  let pos = {
-    found: false,
-    el: 0,
-    offset: null,
-    fn: null,
-  }
-  let length = 0
-
-  return { reg: rec("", ast), pos }
+export function regen(ast, { highlight = true } = {}) {
+  return { reg: rec("", ast) }
 
   function rec(str, { type, value }) {
     // go through each node and append to string, depth-first
@@ -28,18 +20,6 @@ export function regen(ast, { highlight = true, caret = 0 } = {}) {
         : type === "operator"
         ? handleExpression(value)
         : value
-
-    if (!pos.found) {
-      pos.el += 1
-      if (length + next.length >= caret) {
-        // console.log("Found in", type)
-        pos.found = true
-        pos.offset = caret - length
-        pos.fn = childNodes => childNodes[0]
-      } else {
-        length += next.length
-      }
-    }
 
     return (
       str + (highlight ? `<span class="input-${type}">${next}</span>` : next)

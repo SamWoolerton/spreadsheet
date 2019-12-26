@@ -139,9 +139,9 @@ function handleFunction(ast = false) {
     const func = functions[name]
     if (!func) return Fail(`unsupported function '${name}'`)
     if (!func.variadic) {
-      if (func.length < args.length)
+      if (func.fn.length < args.length)
         return Fail(`too many arguments passed to '${name}'`)
-      if (func.length > args.length)
+      if (func.fn.length > args.length)
         return Fail(`not enough arguments passed to '${name}'`)
     }
 

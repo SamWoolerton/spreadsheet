@@ -20,11 +20,24 @@
           <div class="formatting-block">
             <div class="toolbar-desc">Align</div>
             <div
-              v-for="([align, copy]) in [['left', 'Left'], ['center', 'Center'], ['right', 'Right']]"
+              v-for="[align, copy] in [
+                ['left', 'Left'],
+                ['center', 'Center'],
+                ['right', 'Right'],
+              ]"
               :key="align"
-              @click="setFormat({align})"
-              :class="['toolbar-option', { selected: ((state[selected.pos] || { formatting: { align: false } }).formatting.align || null) === align }]"
-            >{{ copy }}</div>
+              @click="setFormat({ align })"
+              :class="[
+                'toolbar-option',
+                {
+                  selected:
+                    ((state[selected.pos] || { formatting: { align: false } })
+                      .formatting.align || null) === align,
+                },
+              ]"
+            >
+              {{ copy }}
+            </div>
           </div>
         </div>
       </div>
@@ -44,6 +57,7 @@
                 <div>
                   <div
                     v-if="!cell.editing"
+                    :id="`cell-${cell.self}`"
                     @click="selected.pos = cell.self"
                     @dblclick="editCell(cell.self)"
                     tabindex="0"
@@ -51,9 +65,13 @@
                     @keydown="cellKeydown(cell.self, $event)"
                     :class="cell.classes"
                   >
-                    <div v-if="!cell.value"></div>
-                    <div v-else-if="cell.value.ok">{{ cell.value.value }}</div>
-                    <div v-else>#ERR: {{ cell.value.message }}</div>
+                    {{
+                      cell.value
+                        ? cell.value.ok
+                          ? cell.value.value
+                          : `#ERR: ${cell.value.message}`
+                        : ""
+                    }}
                   </div>
                   <input
                     v-else
@@ -100,6 +118,10 @@ const between = (num, lower, upper) =>
 // const clone = obj => JSON.parse(JSON.stringify(obj))
 const deepEq = (o1, o2) => JSON.stringify(o1) === JSON.stringify(o2)
 const referenceRegex = /[A-Z]+\d+/gm
+
+const formattingMapping = {
+  align: "text",
+}
 
 const Cell = ({
   refs = [],
@@ -176,7 +198,7 @@ export default {
           const classes =
             (value.ok === false ? "error " : selected ? "selected " : " ") +
             Object.entries(formatting)
-              .map(([key, val]) => `${key}-${val}`)
+              .map(([key, val]) => `${formattingMapping[key] || key}-${val}`)
               .join(" ")
 
           return {
@@ -195,8 +217,7 @@ export default {
     async editCell(pos) {
       this.editing.pos = pos
       this.editing.initial = this.state[pos].formula
-      await this.$nextTick()
-      document.getElementById(`cell-input-${pos}`).focus()
+      this.focus(`cell-input-${pos}`)
     },
     async cellKeydown(position, event) {
       const cell = this.state[position]
@@ -207,13 +228,37 @@ export default {
         return this.updateCell(position, { target: { value: "" } })
       }
 
+      if (key.startsWith("Arrow")) {
+        const direction = key.replace("Arrow", "")
+        const [h, v] = {
+          Left: [-1, 0],
+          Right: [1, 0],
+          Up: [0, -1],
+          Down: [0, 1],
+        }[direction]
+
+        const [, currentCol, currentRow] = /([A-Z]+)(\d+)/.exec(position)
+        const colIndex = this.columns.indexOf(currentCol)
+        const rowIndex = this.rows.indexOf(+currentRow)
+
+        const nextCol = this.columns[colIndex + h]
+        const nextRow = this.rows[rowIndex + v]
+        if (nextCol === undefined || nextRow === undefined) return
+
+        const nextPos = nextCol + nextRow
+        this.focus(`cell-${nextPos}`, { wait: false })
+      }
+
       const validKey = /^[a-zA-Z0-9_+\-*/&><="]$/.exec(key) !== null
       if (validKey) {
         this.editing.initial = cell.formula
         this.editing.pos = position
-        await this.$nextTick()
-        document.getElementById(`cell-input-${position}`).focus()
+        this.focus(`cell-input-${position}`)
       }
+    },
+    async focus(id, { wait = true } = {}) {
+      if (wait) await this.$nextTick()
+      document.getElementById(id).focus()
     },
     updateCell(position, event) {
       this.editing.pos = null
@@ -227,18 +272,13 @@ export default {
       // identical formula is no-op
       if (this.editing.initial === formula) return
 
-      // only update references if it parses correctly
-      // if there's an error, references will stay as they were until the cell is updated again
-      const { ok } = parse(formula)
-      console.log("Formula is", formula, ok)
-      if (ok) {
-        const cell = this.state[position]
-        const { refs } = cell
-        const newRefs = this.getReferences(formula)
+      const cell = this.state[position]
+      const { refs } = cell
+      const newRefs = this.getReferences(formula)
 
-        if (!eqSets(refs, newRefs))
-          this.updateReferences(position, refs, newRefs)
-      }
+      if (!eqSets(refs, newRefs)) this.updateReferences(position, refs, newRefs)
+
+      this.focus(`cell-${position}`)
 
       this.recalculateCell(position)
     },
@@ -363,7 +403,7 @@ export default {
   .toolbar-option {
     &.selected {
       font-weight: bold;
-      background: #dbf4fb;
+      background: #f0f0f0;
     }
   }
 }
@@ -449,8 +489,12 @@ td {
       }
 
       &.selected {
-        background: #dbf4fb;
-        border-color: #9fd0df;
+        background: white;
+        border-color: #85b1f1;
+
+        &:focus {
+          outline: none;
+        }
       }
     }
   }
