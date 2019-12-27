@@ -50,6 +50,7 @@ const tests = [
     `=join(" ","test", "another", "to", "concat")`,
     Ok("test another to concat"),
   ],
+  ["Partial function", `=add`, Fail("function without arguments")],
   [
     "Not real function",
     `=not_real_fn(3,2)`,

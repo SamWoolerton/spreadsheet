@@ -51,12 +51,15 @@ export function makeParser(references, { ast = false } = {}) {
     expression: r =>
       addOptionalWhitespace(
         r,
-        P.alt(r.function, r.reference, r.operator, r.primitive),
+        P.alt(
+          r.function,
+          r.reference,
+          r.operator,
+          r.primitive,
+          r.partialFunction,
+        ),
       )
         .sepBy(P.string(""))
-        // TODO:
-        // P.alt(r.function, r.reference, r.operator, r.primitive)
-        //   .sepBy(P.alt(P.whitespace, P.string("")))
         .map(handleExtendedExpressions(ast))
         .desc("expression without brackets"),
 
@@ -96,6 +99,10 @@ export function makeParser(references, { ast = false } = {}) {
         .desc("function"),
     functionName: () => P.regexp(/[a-z_]*/).desc("function name"),
     functionArg: r => P.alt(r.function, r.expression, r.primitive),
+    partialFunction: () =>
+      P.regexp(/[a-z_]+/)
+        .map(() => ({ ok: false, message: "function without arguments" }))
+        .desc("partial function"),
 
     reference: () =>
       P.regexp(/[A-Z]+\d+/)

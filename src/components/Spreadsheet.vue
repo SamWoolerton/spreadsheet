@@ -162,12 +162,15 @@ export default {
       initial: "",
     },
     selected: {
-      pos: null,
+      pos: "A1",
     },
     valueChanged: null,
     inputChanged: null,
     parse,
   }),
+  beforeMount() {
+    this.fillState()
+  },
   computed: {
     columns() {
       return createArr(this.numColumns).map((_a, i) =>
@@ -178,17 +181,7 @@ export default {
       return createArr(this.numRows).map((_a, i) => i + 1)
     },
     baseCells() {
-      const cells = this.rows.map(r => this.columns.map(c => c + r))
-
-      // make sure that the state object has an entry for every cell so less error handling is required later
-      cells.forEach(row =>
-        row.forEach(
-          // TODO: remove this once it's all working, mutations by reference are a dirty hack
-          pos => !startingState[pos] && (startingState[pos] = Cell()),
-        ),
-      )
-
-      return cells
+      return this.rows.map(r => this.columns.map(c => c + r))
     },
     cells() {
       ignore(this.valueChanged)
@@ -216,6 +209,14 @@ export default {
     },
   },
   methods: {
+    fillState() {
+      // make sure that the state object has an entry for every cell
+      this.baseCells.forEach(row =>
+        row.forEach(
+          pos => !startingState[pos] && (startingState[pos] = Cell()),
+        ),
+      )
+    },
     async editCell(pos) {
       this.editing.pos = pos
       this.editing.initial = this.state[pos].formula
