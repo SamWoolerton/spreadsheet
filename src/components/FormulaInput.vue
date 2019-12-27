@@ -95,9 +95,19 @@ export default {
     },
     setCaret(...args) {
       document.activeElement === this.el && setCaret(...args)
+      // const { node, offset } =
+      //   document.activeElement === this.el && setCaret(...args)
+      // if (!node) return
+      // const arg = getArgument(node, offset)
+      // console.log("node is", node, arg)
     },
   },
 }
+
+// function getArgument(node, offset) {
+//   console.log("going to get argument", node, offset)
+//   return 1
+// }
 
 function setCaret(root, pos) {
   /**
@@ -148,6 +158,8 @@ function setCaret(root, pos) {
 
   // set caret
   setCaretInNode(node, offset)
+
+  return { node, offset }
 }
 
 // originally from https://stackoverflow.com/a/6249440/7170445

@@ -464,17 +464,18 @@ tbody {
 }
 
 td {
-  border: 1px solid #ddd;
+  border: 1px solid hsla(195, 12%, 91%, 1);
 }
 
 th,
 .row-numbers {
   position: sticky;
-  background: white;
+  background: hsla(195, 30%, 94%, 1);
   font-weight: bold;
   cursor: default;
   user-select: none;
   border: none;
+  color: #3f6772;
 
   &::before {
     content: "";
@@ -483,7 +484,7 @@ th,
     bottom: 0;
     right: 0;
     left: 0;
-    border: 1px solid #ddd;
+    border: 1px solid #cfdde1;
   }
 }
 
