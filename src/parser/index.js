@@ -101,7 +101,11 @@ export function makeParser(references, { ast = false } = {}) {
     functionArg: r => P.alt(r.function, r.expression, r.primitive),
     partialFunction: () =>
       P.regexp(/[a-z_]+/)
-        .map(() => ({ ok: false, message: "function without arguments" }))
+        .map(value =>
+          ast
+            ? { type: "partial", value }
+            : { ok: false, message: "function without arguments" },
+        )
         .desc("partial function"),
 
     reference: () =>

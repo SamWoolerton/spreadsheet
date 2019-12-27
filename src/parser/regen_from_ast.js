@@ -11,19 +11,24 @@ export function regen(ast, { highlight = true } = {}) {
         ? handleString(value)
         : type === "boolean"
         ? String(value)
-        : type === "reference" || type === "operator" || type === "whitespace"
+        : type === "reference" ||
+          type === "operator" ||
+          type === "partial" ||
+          type === "whitespace"
         ? value
         : type === "formula"
-        ? rec("=", value)
+        ? rec(ast ? markup(type, "=") : "=", value)
         : type === "function"
         ? handleFunction(value)
         : type === "expression"
         ? handleExpression(value)
         : value
 
-    return (
-      str + (highlight ? `<span class="input-${type}">${next}</span>` : next)
-    )
+    return str + (highlight ? markup(type, next) : next)
+  }
+
+  function markup(type, value) {
+    return `<span class="input-${type}">${value}</span>`
   }
 
   function handleString(value) {

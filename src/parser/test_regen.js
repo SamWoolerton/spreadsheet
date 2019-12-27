@@ -177,6 +177,22 @@ const tests = [
     },
   ],
   [
+    "Partial function",
+    `=add`,
+    {
+      type: "formula",
+      value: {
+        type: "expression",
+        value: [
+          {
+            type: "partial",
+            value: "add",
+          },
+        ],
+      },
+    },
+  ],
+  [
     "Reference",
     `=A1`,
     {
