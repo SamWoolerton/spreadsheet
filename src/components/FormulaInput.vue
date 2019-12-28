@@ -78,22 +78,20 @@ export default {
 
       if (set && this.value.length > 0 && document.activeElement === this.el) {
         await this.$nextTick()
-        this.setCaret(this.el, initialCaret)
+        this.afterChange(this.el, initialCaret)
       }
     },
     async setCaretEnd() {
       if (document.activeElement === this.el) {
         await this.$nextTick()
-        setCaret(this.el, this.el.textContent.length)
+        this.afterChange(this.el, this.el.textContent.length)
       }
     },
-    setCaret(...args) {
-      document.activeElement === this.el && setCaret(...args)
-      // const { node, offset } =
-      //   document.activeElement === this.el && setCaret(...args)
-      // if (!node) return
-      // const arg = getArgument(node, offset)
-      // console.log("node is", node, arg)
+    afterChange(root, pos) {
+      const { node, offset } =
+        document.activeElement === this.el && currentNode(root, pos)
+      if (!node) return
+      setCaretInNode(node, offset)
     },
   },
 }
@@ -103,13 +101,7 @@ export default {
 //   return 1
 // }
 
-function setCaret(root, pos) {
-  /**
-   * find node
-   * calculate offset
-   * set caret
-   */
-
+function currentNode(root, pos) {
   // find node
   const nodeContains = (node, current, pos) =>
     pos >= current && pos <= node.textContent.length + current
@@ -150,17 +142,14 @@ function setCaret(root, pos) {
   const start = end - len
   const offset = pos - start
 
-  // set caret
-  setCaretInNode(node, offset)
-
   return { node, offset }
 }
 
 // originally from https://stackoverflow.com/a/6249440/7170445
-function setCaretInNode(rangeStart, offset) {
+function setCaretInNode(node, offset) {
   const range = document.createRange()
   const sel = window.getSelection()
-  range.setStart(rangeStart, offset)
+  range.setStart(node, offset)
   range.collapse(true)
   sel.removeAllRanges()
   sel.addRange(range)
