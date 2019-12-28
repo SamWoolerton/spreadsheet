@@ -126,10 +126,10 @@ function handleFunction(ast = false) {
     const func = functions[name]
     if (!func) return Fail(`unsupported function '${name}'`)
     if (!func.variadic) {
-      if (func.fn.length < args.length) {
+      if ((func.maxArgs || func.fn.length) < args.length) {
         return Fail(`too many arguments passed to '${name}'`)
       }
-      if (func.fn.length > args.length) {
+      if ((func.minArgs || func.fn.length) > args.length) {
         return Fail(`not enough arguments passed to '${name}'`)
       }
     }
@@ -137,21 +137,11 @@ function handleFunction(ast = false) {
     const [fail] = args.filter(({ ok }) => !ok)
     if (fail) return fail
 
-    return Ok(func.fn(...args.map(a => a.value)))
+    const result = func.fn(...args.map(a => a.value))
+    // if function fails explicitly then return that, otherwise wrap in Ok
+    return result.ok === false ? result : Ok(result)
   }
 }
-
-/**
- * logic previously:
- * get first element and then rest as pairs
- * if ast then reduce over it to construct a tree structure
- * else reduce to get value
- *
- * logic now:
- * flatten inputs
- * if not ast do as above
- * if ast then just recurse into tree structure?
- */
 
 function handleExtendedExpressions(ast = false) {
   return init => {

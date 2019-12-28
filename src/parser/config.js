@@ -15,10 +15,24 @@ export const operatorsList = Object.keys(operators)
 
 export const functions = {
   add: {
-    fn: (a, b) => a + b,
+    fn: (...args) => args.reduce((acc, next) => acc + next, 0),
+    variadic: true,
+  },
+  multiply: {
+    fn: (...args) => args.reduce((acc, next) => acc * next, 0),
+    variadic: true,
+  },
+  divide: {
+    fn: (top, bottom, fallback = Fail("divide by 0")) =>
+      bottom === 0 ? fallback : top / bottom,
+    minArgs: 2,
+    maxArgs: 3,
   },
   increment: {
     fn: n => n + 1,
+  },
+  decrement: {
+    fn: n => n - 1,
   },
   to_power: {
     fn: (n, pow) => Math.pow(n, pow),

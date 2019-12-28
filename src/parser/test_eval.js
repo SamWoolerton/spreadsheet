@@ -41,8 +41,8 @@ const tests = [
   ],
   [
     "Function with not enough arguments",
-    `=add(2)`,
-    Fail("not enough arguments passed to 'add'"),
+    `=to_power(2)`,
+    Fail("not enough arguments passed to 'to_power'"),
   ],
   ["Function with underscore", `=to_power(3,2)`, Ok(9)],
   [
@@ -69,6 +69,9 @@ const tests = [
   ["Chained expressions", `=1+2-3+17-5`, Ok(12)],
   ["Brackets precedence", `=2*(3+4)`, Ok(14)],
   ["If function with expression", `=if(4>2,10,3)`, Ok(10)],
+  ["Divide function with fallback", `=divide(2,0, 6)`, Ok(6)],
+  ["Divide function can fail", `=divide(2,0)`, Fail("divide by 0")],
+  ["Function with nested error", `=increment(1 / 0)`, Fail("divide by 0")],
   ["Parser error", `=#`, Fail("syntax"), { suppress: true }],
   ["Reference", `=A1`, Ok(5)],
   [
