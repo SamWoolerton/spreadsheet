@@ -1,42 +1,6 @@
 import * as P from "parsimmon"
-import { Ok, Fail, quotient, getFirst, isObject } from "../utility"
-
-const flatten = arr => [].concat(...arr)
-
-const operators = {
-  "+": (a, b) => a + b,
-  "-": (a, b) => a - b,
-  "*": (a, b) => a * b,
-  "/": (a, b) => (b === 0 ? Fail("divide by 0") : a / b),
-  ">": (a, b) => a > b,
-  ">=": (a, b) => a >= b,
-  "<": (a, b) => a < b,
-  "<=": (a, b) => a <= b,
-  "&": (a, b) => String(a).concat(b),
-}
-const operatorsList = Object.keys(operators)
-
-const functions = {
-  add: {
-    fn: (a, b) => a + b,
-  },
-  increment: {
-    fn: n => n + 1,
-  },
-  to_power: {
-    fn: (n, pow) => Math.pow(n, pow),
-  },
-  if: {
-    fn: (pred, ifTrue, ifFalse) => (pred ? ifTrue : ifFalse),
-  },
-  join: {
-    fn: (sep, ...rest) => rest.join(sep),
-    variadic: true,
-  },
-  "": {
-    fn: n => n,
-  },
-}
+import { Ok, Fail, quotient, isObject, flatten } from "../utility"
+import { operators, operatorsList, functions } from "./config"
 
 export function makeParser(references, { ast = false } = {}) {
   const { main: parser } = P.createLanguage({
@@ -44,7 +8,7 @@ export function makeParser(references, { ast = false } = {}) {
     formula: r =>
       P.seq(r.eq, r.optWhitespace, P.alt(r.expression, r.function))
         .map(removeNonValues(ast))
-        .map(getFirst)
+        .map(([, value]) => value)
         .map(value => (ast ? { type: "formula", value } : value))
         .desc("formula"),
 
@@ -63,7 +27,9 @@ export function makeParser(references, { ast = false } = {}) {
         .map(handleExtendedExpressions(ast))
         .desc("expression without brackets"),
 
-    eq: () => P.string("="),
+    // eq: () => P.string("=").map(value => value),
+    eq: () =>
+      P.string("=").map(value => (ast ? { type: "eq", value } : Ok(value))),
     operator: () => P.alt(...operatorsList.map(P.string)).desc("operator"),
     lbracket: () => P.string("("),
     rbracket: () => P.string(")"),
@@ -102,9 +68,7 @@ export function makeParser(references, { ast = false } = {}) {
     partialFunction: () =>
       P.regexp(/[a-z_]+/)
         .map(value =>
-          ast
-            ? { type: "partial", value }
-            : { ok: false, message: "function without arguments" },
+          ast ? { type: "partial", value } : Fail("function without arguments"),
         )
         .desc("partial function"),
 
@@ -114,7 +78,7 @@ export function makeParser(references, { ast = false } = {}) {
         .desc("reference"),
   })
 
-  return function parse(input, { suppress = false } = {}) {
+  return function parse(input, { suppress = true } = {}) {
     try {
       // @ts-ignore
       if (input === "") return Ok("")

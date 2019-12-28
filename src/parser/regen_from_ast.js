@@ -1,30 +1,42 @@
 export function regen(ast, { highlight = true } = {}) {
-  return { reg: rec("", ast) }
+  const { ok, str } = rec(Ok(""), ast)
+  return { reg: ok ? str : "" }
 
-  function rec(str, { type, value }) {
-    // go through each node and append to string, depth-first
+  // go through each node and append to string, depth-first
+  function rec({ ok, str }, { type, value }) {
+    if (!ok || type === undefined) return Fail()
 
-    const next =
+    const { ok: childOk, str: next } =
       type === "number"
-        ? String(value)
+        ? Ok(String(value))
         : type === "string"
-        ? handleString(value)
+        ? Ok(handleString(value))
         : type === "boolean"
-        ? String(value)
+        ? Ok(String(value))
         : type === "reference" ||
           type === "operator" ||
           type === "partial" ||
           type === "whitespace"
-        ? value
+        ? Ok(value)
         : type === "formula"
-        ? rec(ast ? markup(type, "=") : "=", value)
+        ? rec(Ok(highlight ? markup("eq", "=") : "="), value)
         : type === "function"
         ? handleFunction(value)
         : type === "expression"
         ? handleExpression(value)
-        : value
+        : Ok(value)
 
-    return str + (highlight ? markup(type, next) : next)
+    if (!childOk) return Fail()
+
+    return Ok(str + (highlight ? markup(type, next) : next))
+  }
+
+  function Ok(str) {
+    return { ok: true, str }
+  }
+
+  function Fail() {
+    return { ok: false, str: "" }
   }
 
   function markup(type, value) {
@@ -38,14 +50,24 @@ export function regen(ast, { highlight = true } = {}) {
   function handleFunction([fn, args]) {
     // recurse over arguments
     // whitespace complicates things - recreating a .join() by appending a comma (if not whitespace) and then slicing off the final comma
-    return `${fn}(${args
-      .map(a => rec("", a) + (a.type === "whitespace" ? "" : ","))
+    const processedArgs = args.map(arg => {
+      const { ok, str } = rec(Ok(""), arg)
+      if (!ok) return { ok, str }
+      const sep = arg.type === "whitespace" ? "" : ","
+      return Ok(str + sep)
+    })
+    if (!processedArgs.every(({ ok }) => ok)) return Fail()
+    const argsString = processedArgs
+      .map(({ str }) => str)
       .join("")
-      .slice(0, -1)})`
+      .slice(0, -1)
+    return Ok(`${fn}(${argsString})`)
   }
 
   function handleExpression(values) {
-    return values.map(val => rec("", val)).join("")
+    const processed = values.map(val => rec(Ok(""), val))
+    if (!processed.every(v => v.ok)) return Fail()
+    return Ok(processed.map(({ str }) => str).join(""))
   }
 }
 

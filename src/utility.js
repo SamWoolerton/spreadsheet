@@ -12,14 +12,8 @@ export function Fail(message) {
   }
 }
 
-export function quotient(top, bottom) {
-  return Math.floor(top / bottom)
-}
+export const quotient = (top, bottom) => Math.floor(top / bottom)
 
-export function getFirst([first]) {
-  return first
-}
+export const isObject = obj => typeof obj === "object"
 
-export function isObject(obj) {
-  return typeof obj === "object"
-}
+export const flatten = arr => [].concat(...arr)

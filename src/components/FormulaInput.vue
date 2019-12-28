@@ -71,15 +71,9 @@ export default {
       await this.$nextTick()
       const initialCaret = this.cursor
 
-      // if syntax error then default back to formula passed in
-      if (!this.parseValue(val, { suppress: true }).ok) {
-        this.highlighted = this.value
-        await this.$nextTick()
-        return this.setCaret(this.el, initialCaret)
-      }
-
       const ast = parse(val)
-      const { reg } = regen(ast)
+      // default to this.value if regen fails (because invalid AST)
+      const reg = regen(ast).reg || this.value
       this.highlighted = reg
 
       if (set && this.value.length > 0 && document.activeElement === this.el) {
