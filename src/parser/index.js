@@ -1,5 +1,5 @@
 import * as P from "parsimmon"
-import { Ok, Fail, quotient, isObject, flatten } from "../utility"
+import { Ok, Fail, quotient, isObject, flatten, round } from "../utility"
 import { operators, operatorsList, functions } from "./config"
 
 export function makeParser(references, { ast = false } = {}) {
@@ -83,7 +83,10 @@ export function makeParser(references, { ast = false } = {}) {
       // @ts-ignore
       if (input === "") return Ok("")
       if (input === "=") return Ok("=")
-      return parser.tryParse(input)
+      const { ok, value, message } = parser.tryParse(input)
+      return ok
+        ? { ok, value: typeof value === "number" ? round(value, 5) : value }
+        : { ok, message }
     } catch ({ message }) {
       if (!suppress) console.log("Parsing error \n", message)
       return Fail("syntax")
