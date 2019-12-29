@@ -27,7 +27,6 @@ export function makeParser(references, { ast = false } = {}) {
         .map(handleExtendedExpressions(ast))
         .desc("expression without brackets"),
 
-    // eq: () => P.string("=").map(value => value),
     eq: () =>
       P.string("=").map(value => (ast ? { type: "eq", value } : Ok(value))),
     operator: () => P.alt(...operatorsList.map(P.string)).desc("operator"),
@@ -83,6 +82,8 @@ export function makeParser(references, { ast = false } = {}) {
       // @ts-ignore
       if (input === "") return Ok("")
       if (input === "=") return Ok("=")
+      if (ast) return parser.tryParse(input)
+
       const { ok, value, message } = parser.tryParse(input)
       return ok
         ? { ok, value: typeof value === "number" ? round(value, 5) : value }
@@ -205,7 +206,12 @@ function addOptionalWhitespace(r, el) {
 
 function removeNonValues(ast) {
   return args => {
-    const blacklist = ["=", "(", ")", "", ...(ast ? [] : [" "])]
-    return args.filter(val => !blacklist.includes(val))
+    const blacklist = ["=", "(", ")", ""]
+
+    if (ast) return args.filter(val => !blacklist.includes(val))
+
+    return args.filter(
+      val => !blacklist.includes(typeof val === "string" && val.trim()),
+    )
   }
 }

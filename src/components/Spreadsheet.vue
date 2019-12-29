@@ -99,7 +99,7 @@
 import FormulaInput from "./FormulaInput"
 
 import { makeParser } from "../parser/index"
-import { Ok, Fail } from "../utility"
+import { Ok, Fail } from "../utility/index"
 
 const startingState = {}
 const parse = makeParser(startingState)
