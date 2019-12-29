@@ -1,19 +1,20 @@
 <template>
   <div class="relative">
-  <div
-    :id="id"
-    contenteditable
-    v-html="highlighted"
-    @input="handleInput"
-    @keydown.enter="$emit('update', $event)"
-    @keydown.esc="$emit('cancel')"
+    <div
+      :id="id"
+      contenteditable
+      v-html="highlighted"
+      @input="handleInput"
+      @keydown.enter="$emit('update', $event)"
+      @keydown.esc="$emit('cancel')"
       @keydown.tab="autocompleteOptions.length > 0 && chooseSuggestion(autocompleteOptions[0])"
       @keyup.left="updateCaret"
       @keyup.right="updateCaret"
       @click.stop="updateCaret"
-    class="input"
-    spellcheck="false"
-  />
+      @focus="handleFocus"
+      class="input"
+      spellcheck="false"
+    />
     <div class="suggestions">
       <!-- mousedown fires before blur -->
       <div
@@ -53,6 +54,10 @@ export default {
       type: Function,
       required: true,
     },
+    caret: {
+      type: Number,
+      default: 0,
+    },
   },
   data: () => ({
     el: null,
@@ -75,14 +80,15 @@ export default {
   },
   methods: {
     handleInput(event) {
-      if (event.target.textContent !== this.value) {
-        this.cursor = getCaret(this.el)
-        this.$emit("input", event)
+      const value = event.target.textContent
+      if (value !== this.value) {
+        const caret = getCaret(this.el)
+        this.$emit("input", { value, caret })
       }
     },
     async processInput(val, set = true) {
       await this.$nextTick()
-      const initialCaret = this.cursor
+      const initialCaret = this.caret
 
       const ast = parse(val)
       // default to this.value if regen fails (because invalid AST)
@@ -94,10 +100,15 @@ export default {
         this.afterChange(this.el, initialCaret)
       }
     },
+    handleFocus() {
+      this.setCaretEnd()
+      this.$emit("focus")
+    },
     async setCaretEnd() {
       if (document.activeElement === this.el) {
         await this.$nextTick()
         this.afterChange(this.el, this.el.textContent.length)
+        this.$emit("input", { value: this.value, caret: this.caret })
       }
     },
     afterChange(root, pos) {
@@ -112,6 +123,9 @@ export default {
         this.autocompleteOptions = []
       }
     },
+    async updateCaret() {
+      this.$emit("input", { value: this.value, caret: getCaret(this.el) })
+    },
     getAutocompleteOptions(name) {
       const { options } = autocomplete(name)
       this.autocompleteOptions = options
@@ -121,7 +135,7 @@ export default {
       const nextVal = "=" + suggestion
       console.log("Choosing suggestion")
       this.$emit("input", { target: { textContent: nextVal } })
-  },
+    },
   },
 }
 

@@ -1,18 +1,20 @@
 <template>
   <div>
-    <div class="parent-container">
+    <div class="parent-container" @mousedown="handleClick($event, null)">
       <div class="toolbars">
         <div class="formula-bar">
           <FormulaInput
             v-if="selected.pos"
-            :value="state[selected.pos].formula"
-            @input="formulaInput(selected.pos, $event)"
             :id="'formula-bar-input'"
+            :value="state[selected.pos].formula"
+            :caret="inputCaret"
             :parseValue="parse"
+            :updateTrigger="inputChanged"
+            @input="formulaInput(selected.pos, $event)"
             @update="updateCell(selected.pos, $event)"
             @updateBlur="updateCell(selected.pos, $event, true)"
             @cancel="cancelUpdate(selected.pos)"
-            :updateTrigger="inputChanged"
+            @focus="editing.pos = selected.pos"
           />
           <input v-else disabled value="No cell selected" />
         </div>
@@ -56,7 +58,7 @@
                   <div
                     v-if="!cell.editing"
                     :id="`cell-${cell.self}`"
-                    @click="selected.pos = cell.self"
+                    @mousedown.stop.prevent="handleClick($event, cell.self)"
                     @dblclick="editCell(cell.self)"
                     tabindex="0"
                     @focus="selected.pos = cell.self"
@@ -73,14 +75,15 @@
                   </div>
                   <FormulaInput
                     v-else
-                    :value="state[cell.self].formula"
-                    @input="formulaInput(cell.self, $event)"
                     :id="`cell-input-${cell.self}`"
+                    :value="state[cell.self].formula"
+                    :caret="inputCaret"
                     :parseValue="parse"
+                    :updateTrigger="inputChanged"
+                    @input="formulaInput(cell.self, $event)"
                     @update="updateCell(cell.self, $event)"
                     @updateBlur="updateCell(cell.self, $event, true)"
                     @cancel="cancelUpdate(cell.self)"
-                    :updateTrigger="inputChanged"
                   />
                 </div>
               </td>
@@ -167,6 +170,7 @@ export default {
     valueChanged: null,
     inputChanged: null,
     parse,
+    inputCaret: 0,
   }),
   beforeMount() {
     this.fillState()
@@ -217,7 +221,47 @@ export default {
         ),
       )
     },
+    handleClick(e, pos = null) {
+      // click in the current cell should do nothing
+      const targetId = e.target.id
+      if (
+        targetId.replace("cell-input-", "") === this.editing.pos ||
+        targetId === "formula-bar-input"
+      ) {
+        return
+      }
+
+      // Clicked on document or toolbar options
+      // If editing then exit, otherwise no change to selection
+      if (pos === null) {
+        if (this.editing.pos) {
+          const cell = this.state[this.editing.pos]
+          this.updateCell(
+            this.editing.pos,
+            { target: { textContent: cell.formula } },
+            true,
+          )
+        }
+      } else {
+        // if editing then insert cell reference at cursor and update cursor position
+        if (this.editing.pos) {
+          const cell = this.state[this.editing.pos]
+          const caret = this.inputCaret
+          cell.formula =
+            cell.formula.slice(0, caret) + pos + cell.formula.slice(caret)
+          this.inputCaret = caret + pos.length
+          this.inputChanged = pos
+        } else {
+          // otherwise select and focus cell
+          this.selected.pos = pos
+          this.focus(`cell-${pos}`)
+        }
+      }
+    },
     async editCell(pos) {
+      if (this.editing.pos !== null) await this.cancelUpdate(this.editing.pos)
+
+      this.selected.pos = pos
       this.editing.pos = pos
       this.editing.initial = this.state[pos].formula
       this.focus(`cell-input-${pos}`)
@@ -281,10 +325,10 @@ export default {
         this.state[position].formula = ""
       }
 
+      if (!blur) this.focus(`cell-${position}`)
+
       // identical formula is no-op
-      if (this.editing.initial === formula) {
-        if (!blur) return this.focus(`cell-${position}`)
-      }
+      if (this.editing.initial === formula) return
 
       const cell = this.state[position]
       const { refs } = cell
@@ -292,14 +336,15 @@ export default {
 
       if (!eqSets(refs, newRefs)) this.updateReferences(position, refs, newRefs)
 
-      if (!blur) this.focus(`cell-${position}`)
-
       this.recalculateCell(position)
+
+      this.inputCaret = null
     },
     async cancelUpdate(pos) {
       this.state[pos].formula = this.editing.initial
       await this.$nextTick()
       this.editing.pos = null
+      this.inputCaret = null
     },
     getReferences(formula) {
       return set([...formula.matchAll(referenceRegex)].map(([ref]) => ref))
@@ -372,9 +417,10 @@ export default {
 
       this.valueChanged = JSON.stringify(cell.formatting)
     },
-    formulaInput(pos, event) {
-      this.state[pos].formula = event.target.textContent
-      this.inputChanged = event.target.textContent
+    formulaInput(pos, { value, caret }) {
+      this.state[pos].formula = value
+      this.inputChanged = value
+      this.inputCaret = caret
     },
   },
 }
