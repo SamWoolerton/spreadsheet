@@ -385,10 +385,6 @@ export default {
   height: 100vh;
   max-height: 100vh;
 
-  .toolbars {
-    height: 3rem;
-  }
-
   .table-container {
     height: calc(100vh - 3rem);
     max-height: calc(100vh - 3rem);
@@ -400,7 +396,6 @@ export default {
   display: flex;
   flex-wrap: wrap;
   background: #f0f0f0;
-  padding: 0.25rem;
 
   & > div {
     flex-grow: 1;
@@ -408,7 +403,9 @@ export default {
 }
 
 .formula-bar {
+  width: 100%;
   max-width: 400px;
+  margin: 0.25em;
   margin-right: 0.5em;
 
   input {
