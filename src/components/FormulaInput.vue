@@ -143,7 +143,7 @@ export default {
     chooseSuggestion(suggestion) {
       const prior = this.value.slice(0, this.activeNode.start)
       const post = this.value.slice(this.activeNode.start + this.activeNode.len)
-      const nextVal = prior + suggestion + "(" + post
+      const nextVal = prior + suggestion + "()" + post
       this.$emit("input", {
         value: nextVal,
         caret: this.activeNode.start + suggestion.length + 1,
