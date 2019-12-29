@@ -18,28 +18,7 @@
           />
           <input v-else disabled value="No cell selected" />
         </div>
-        <div class="formatting-bar">
-          <div class="formatting-block">
-            <div class="toolbar-desc">Align</div>
-            <div
-              v-for="[align, copy] in [
-                ['left', 'Left'],
-                ['center', 'Center'],
-                ['right', 'Right'],
-              ]"
-              :key="align"
-              @click="setFormat({ align })"
-              :class="[
-                'toolbar-option',
-                {
-                  selected:
-                    ((state[selected.pos] || { formatting: { align: false } })
-                      .formatting.align || null) === align,
-                },
-              ]"
-            >{{ copy }}</div>
-          </div>
-        </div>
+        <Toolbar :selectedFormatting="state[selected.pos]" @update="setFormat" />
       </div>
 
       <div class="mx-auto table-container">
@@ -97,6 +76,7 @@
 
 <script>
 import FormulaInput from "./FormulaInput"
+import Toolbar from "./Toolbar"
 
 import { makeParser } from "../parser/index"
 import { Ok, Fail } from "../utility/index"
@@ -155,7 +135,7 @@ Object.keys(startingState).forEach(
 )
 
 export default {
-  components: { FormulaInput },
+  components: { FormulaInput, Toolbar },
   data: () => ({
     numColumns: between(30, 1, 26 * 26),
     numRows: between(30, 1, 100),
@@ -466,37 +446,6 @@ export default {
 
     &:disabled {
       background: #eee;
-    }
-  }
-}
-
-.formatting-bar {
-  height: 100%;
-  align-self: center;
-
-  .formatting-block {
-    height: 100%;
-    display: flex;
-    flex-wrap: wrap;
-    background: white;
-    margin-right: 0.25rem;
-
-    & > * {
-      height: 100%;
-      padding: 0.5rem 0.75rem;
-    }
-  }
-
-  .toolbar-desc {
-    font-style: italic;
-  }
-
-  .toolbar-option {
-    cursor: pointer;
-
-    &.selected {
-      font-weight: bold;
-      background: #f0f0f0;
     }
   }
 }
