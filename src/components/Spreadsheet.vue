@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="parent-container" @mousedown="handleClick($event, null)">
+    <div id="parent-container" class="parent-container" @mousedown="handleClick($event, null)">
       <div class="toolbars">
         <div class="formula-bar">
           <FormulaInput
@@ -13,7 +13,7 @@
             @input="formulaInput(selected.pos, $event)"
             @update="updateCell(selected.pos, $event)"
             @updateBlur="updateCell(selected.pos, $event, true)"
-            @cancel="cancelUpdate(selected.pos)"
+            @cancel="cancelUpdate(selected.pos, true)"
             @focus="editing.pos = selected.pos"
           />
           <input v-else disabled value="No cell selected" />
@@ -83,7 +83,7 @@
                     @input="formulaInput(cell.self, $event)"
                     @update="updateCell(cell.self, $event)"
                     @updateBlur="updateCell(cell.self, $event, true)"
-                    @cancel="cancelUpdate(cell.self)"
+                    @cancel="cancelUpdate(cell.self, true)"
                   />
                 </div>
               </td>
@@ -222,7 +222,7 @@ export default {
       )
     },
     handleClick(e, pos = null) {
-      // click in the current cell should do nothing
+      // click in the current cell or formula bar should do nothing
       const targetId = e.target.id
       if (
         targetId.replace("cell-input-", "") === this.editing.pos ||
@@ -230,6 +230,9 @@ export default {
       ) {
         return
       }
+
+      // selecting an autocomplete suggestion should do nothing in parent
+      if (e.target.className === "suggestion") return
 
       // Clicked on document or toolbar options
       // If editing then exit, otherwise no change to selection
@@ -340,11 +343,12 @@ export default {
 
       this.inputCaret = null
     },
-    async cancelUpdate(pos) {
+    async cancelUpdate(pos, focus = false) {
       this.state[pos].formula = this.editing.initial
       await this.$nextTick()
       this.editing.pos = null
       this.inputCaret = null
+      if (focus) this.focus(`cell-${pos}`)
     },
     getReferences(formula) {
       return set([...formula.matchAll(referenceRegex)].map(([ref]) => ref))

@@ -7,20 +7,20 @@
       @input="handleInput"
       @keydown.enter="$emit('update', $event)"
       @keydown.esc="$emit('cancel')"
-      @keydown.tab="autocompleteOptions.length > 0 && chooseSuggestion(autocompleteOptions[0])"
+      @keydown.tab.prevent="autocompleteOptions.length > 0 && chooseSuggestion(autocompleteOptions[0])"
       @keyup.left="updateCaret"
       @keyup.right="updateCaret"
-      @click.stop="updateCaret"
+      @mousedown.stop="updateCaret"
       @focus="handleFocus"
       class="input"
       spellcheck="false"
     />
-    <div class="suggestions">
-      <!-- mousedown fires before blur -->
+    <div id="suggestions" class="suggestions" v-if="autocompleteOptions.length > 0">
       <div
         v-for="suggestion in autocompleteOptions"
         :key="suggestion"
-        @mousedown="chooseSuggestion(suggestion)"
+        @mousedown.prevent="chooseSuggestion(suggestion)"
+        class="suggestion"
       >{{ suggestion }}</div>
     </div>
   </div>
@@ -63,11 +63,15 @@ export default {
   data: () => ({
     el: null,
     highlighted: "",
-    autocompleteOptions: [],
+    autocompletePrompt: "",
+    activeNode: null,
   }),
   computed: {
     active() {
       return document.activeElement === this.el
+    },
+    autocompleteOptions() {
+      return autocomplete(this.autocompletePrompt).options
     },
   },
   watch: {
@@ -113,29 +117,37 @@ export default {
       }
     },
     afterChange(root, pos) {
-      const { node, offset } =
+      const { node, offset, start, len } =
         document.activeElement === this.el && currentNode(root, pos)
+
+      // this would be a really weird error condition
+      if (!node) return
 
       setCaretInNode(node, offset)
 
       if (node.parentNode.className === "input-partial") {
-        this.getAutocompleteOptions(node.textContent)
+        this.autocompletePrompt = node.textContent
+        this.activeNode = {
+          node,
+          offset,
+          start,
+          len,
+        }
       } else {
-        this.autocompleteOptions = []
+        this.autocompletePrompt = ""
       }
     },
     async updateCaret() {
       this.$emit("input", { value: this.value, caret: getCaret(this.el) })
     },
-    getAutocompleteOptions(name) {
-      const { options } = autocomplete(name)
-      this.autocompleteOptions = options
-    },
     chooseSuggestion(suggestion) {
-      this.test = "testing!"
-      const nextVal = "=" + suggestion
-      console.log("Choosing suggestion")
-      this.$emit("input", { target: { textContent: nextVal } })
+      const prior = this.value.slice(0, this.activeNode.start)
+      const post = this.value.slice(this.activeNode.start + this.activeNode.len)
+      const nextVal = prior + suggestion + "(" + post
+      this.$emit("input", {
+        value: nextVal,
+        caret: this.activeNode.start + suggestion.length + 1,
+      })
     },
   },
 }

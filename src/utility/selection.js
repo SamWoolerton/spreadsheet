@@ -33,13 +33,13 @@ export function currentNode(root, pos) {
       { node, current, len: null, found: false },
     )
   }
-  const { node, current: end, len } = getNode(root, 0, pos)
+  const { node, current: end, len } = getNode(root, 0)
 
   // calculate offset
   const start = end - len
   const offset = pos - start
 
-  return { node, offset }
+  return { node, offset, start, len }
 }
 
 // originally from https://stackoverflow.com/a/6249440/7170445
