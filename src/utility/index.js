@@ -22,3 +22,7 @@ export const round = (n, dp) => {
   const exp = Math.pow(10, dp)
   return Math.round(n * exp) / exp
 }
+
+export const max = (a, b) => (a > b ? a : b)
+
+export const min = (a, b) => (a < b ? a : b)

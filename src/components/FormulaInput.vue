@@ -10,6 +10,7 @@
       @keydown.tab.prevent="autocompleteOptions.length > 0 && chooseSuggestion(autocompleteOptions[0])"
       @keyup.left="updateCaret"
       @keyup.right="updateCaret"
+      @keydown.down.prevent="focusFirstSuggestion"
       @mousedown.stop="updateCaret"
       @focus="handleFocus"
       class="input"
@@ -20,7 +21,13 @@
         v-for="suggestion in autocompleteOptions"
         :key="suggestion"
         @mousedown.prevent="chooseSuggestion(suggestion)"
+        @keydown.up.prevent="changeSuggestionFocus($event, suggestion)"
+        @keydown.down.prevent="changeSuggestionFocus($event, suggestion)"
+        @keydown.enter="chooseSuggestion(suggestion)"
+        @keydown.tab.prevent="chooseSuggestion(suggestion)"
+        @keydown.esc="el.focus()"
         class="suggestion"
+        tabindex="0"
       >{{ suggestion }}</div>
     </div>
   </div>
@@ -31,6 +38,7 @@ import { makeParser } from "../parser/index"
 import { regen } from "../parser/regen_from_ast"
 import { autocomplete } from "../parser/autocomplete"
 import { getCaret, setCaretInNode, currentNode } from "../utility/selection"
+import { min } from "../utility/index"
 
 const state = {}
 
@@ -148,6 +156,22 @@ export default {
         value: nextVal,
         caret: this.activeNode.start + suggestion.length + 1,
       })
+      this.el.focus()
+    },
+    focusFirstSuggestion() {
+      const suggestionsEl = document.getElementById("suggestions")
+      suggestionsEl.childNodes[0].focus()
+    },
+    changeSuggestionFocus(event, current) {
+      const currentIndex = this.autocompleteOptions.indexOf(current)
+      const direction = event.key === "ArrowDown" ? 1 : -1
+      const numOptions = this.autocompleteOptions.length
+      const newIndex = min(currentIndex + direction, numOptions - 1)
+
+      if (newIndex < 0) return this.el.focus()
+
+      const suggestionsEl = document.getElementById("suggestions")
+      suggestionsEl.childNodes[newIndex].focus()
     },
   },
 }
@@ -200,7 +224,8 @@ span {
     cursor: pointer;
     padding: 0.5rem 0.75rem;
 
-    &:hover {
+    &:hover,
+    &:focus {
       background: #ebf2f4;
     }
   }

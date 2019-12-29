@@ -234,6 +234,7 @@ export default {
             cell.formula.slice(0, caret) + pos + cell.formula.slice(caret)
           this.inputCaret = caret + pos.length
           this.inputChanged = pos
+          this.focus(`cell-input-${this.editing.pos}`)
         } else {
           // otherwise select and focus cell
           this.selected.pos = pos
