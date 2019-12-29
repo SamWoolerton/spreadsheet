@@ -570,7 +570,7 @@ td {
       min-width: 100%;
       border: 2px solid transparent;
 
-      & > div {
+      & > .input {
         // align text vertically in center of cell
         height: 100%;
         display: flex;

@@ -189,15 +189,20 @@ span {
 
 .suggestions {
   position: absolute;
-  background: lightblue;
+  background: white;
   top: 100%;
-  width: 100%;
   z-index: 10;
   display: flex;
   flex-direction: column;
+  box-shadow: 6px 6px 24px rgba(0, 0, 0, 0.12);
 
   .suggestion {
     cursor: pointer;
+    padding: 0.5rem 0.75rem;
+
+    &:hover {
+      background: #ebf2f4;
+    }
   }
 }
 </style>
