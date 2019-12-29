@@ -1,4 +1,5 @@
 <template>
+  <div class="relative">
   <div
     :id="id"
     contenteditable
@@ -6,16 +7,28 @@
     @input="handleInput"
     @keydown.enter="$emit('update', $event)"
     @keydown.esc="$emit('cancel')"
-    @focus="setCaretEnd"
-    @blur="$emit('updateBlur', $event)"
+      @keydown.tab="autocompleteOptions.length > 0 && chooseSuggestion(autocompleteOptions[0])"
+      @keyup.left="updateCaret"
+      @keyup.right="updateCaret"
+      @click.stop="updateCaret"
     class="input"
     spellcheck="false"
   />
+    <div class="suggestions">
+      <!-- mousedown fires before blur -->
+      <div
+        v-for="suggestion in autocompleteOptions"
+        :key="suggestion"
+        @mousedown="chooseSuggestion(suggestion)"
+      >{{ suggestion }}</div>
+    </div>
+  </div>
 </template>
 
 <script>
 import { makeParser } from "../parser/index"
 import { regen } from "../parser/regen_from_ast"
+import { autocomplete } from "../parser/autocomplete"
 
 const state = {}
 
@@ -44,7 +57,7 @@ export default {
   data: () => ({
     el: null,
     highlighted: "",
-    cursor: 0,
+    autocompleteOptions: [],
   }),
   computed: {
     active() {
@@ -90,9 +103,25 @@ export default {
     afterChange(root, pos) {
       const { node, offset } =
         document.activeElement === this.el && currentNode(root, pos)
-      if (!node) return
+
       setCaretInNode(node, offset)
+
+      if (node.parentNode.className === "input-partial") {
+        this.getAutocompleteOptions(node.textContent)
+      } else {
+        this.autocompleteOptions = []
+      }
     },
+    getAutocompleteOptions(name) {
+      const { options } = autocomplete(name)
+      this.autocompleteOptions = options
+    },
+    chooseSuggestion(suggestion) {
+      this.test = "testing!"
+      const nextVal = "=" + suggestion
+      console.log("Choosing suggestion")
+      this.$emit("input", { target: { textContent: nextVal } })
+  },
   },
 }
 
@@ -207,6 +236,20 @@ span {
   }
   &.input-boolean {
     color: green;
+  }
+}
+
+.suggestions {
+  position: absolute;
+  background: lightblue;
+  top: 100%;
+  width: 100%;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+
+  .suggestion {
+    cursor: pointer;
   }
 }
 </style>
