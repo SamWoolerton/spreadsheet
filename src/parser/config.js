@@ -15,11 +15,11 @@ export const operatorsList = Object.keys(operators)
 
 export const functions = {
   add: {
-    fn: (...args) => args.reduce((acc, next) => acc + next, 0),
+    fn: (...args) => args.reduce((acc, next) => acc + next),
     variadic: true,
   },
   multiply: {
-    fn: (...args) => args.reduce((acc, next) => acc * next, 0),
+    fn: (...args) => args.reduce((acc, next) => acc * next),
     variadic: true,
   },
   divide: {
