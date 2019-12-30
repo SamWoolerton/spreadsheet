@@ -16,7 +16,12 @@
       class="input formula-input"
       spellcheck="false"
     />
-    <div id="suggestions" class="suggestions" v-if="autocompleteOptions.length > 0">
+    <div
+      id="suggestions"
+      class="suggestions"
+      v-if="autocompleteOptions.length > 0"
+      :style="`left: ${this.offsetPx}px`"
+    >
       <div
         v-for="suggestion in autocompleteOptions"
         :key="suggestion"
@@ -30,7 +35,7 @@
         tabindex="0"
       >{{ suggestion }}</div>
     </div>
-    <div class="hints" v-if="currentFunction || hint">
+    <div class="hints" v-if="currentFunction || hint" :style="`left: ${this.offsetPx}px`">
       <div v-if="currentFunction">
         <span class="font-bold">{{ currentFunction.name }}</span>
         {{ currentFunction.description }}
@@ -86,6 +91,7 @@ export default {
     activeNode: null,
     currentFunction: null,
     hint: null,
+    offsetPx: 0,
   }),
   computed: {
     active() {
@@ -141,13 +147,11 @@ export default {
       const { node, offset, start, len } =
         document.activeElement === this.el && currentNode(root, pos)
 
-      console.log("active node is", node)
-
       // this would be a really weird error condition
       if (!node) return
 
       setCaretInNode(node, offset)
-
+      this.offsetPx = node.parentNode.offsetLeft
       this.currentFunction = null
       this.hint = null
 
