@@ -13,7 +13,7 @@
       @keydown.down.prevent="focusFirstSuggestion"
       @mousedown.stop="updateCaret"
       @focus="handleFocus"
-      class="input"
+      class="input formula-input"
       spellcheck="false"
     />
     <div id="suggestions" class="suggestions" v-if="autocompleteOptions.length > 0">
@@ -37,7 +37,7 @@
       </div>
       <div v-if="hint">
         <span class="font-bold">{{ hint.name }}</span>
-        ({{ hint.type }})
+        <span v-if="hint.type">({{ hint.type }})</span>
       </div>
     </div>
   </div>
@@ -47,6 +47,7 @@
 import { makeParser } from "../parser/index"
 import { regen } from "../parser/regen_from_ast"
 import { autocomplete } from "../parser/autocomplete"
+import { getHints } from "../parser/hints"
 import { getCaret, setCaretInNode, currentNode } from "../utility/selection"
 import { min } from "../utility/index"
 
@@ -140,6 +141,8 @@ export default {
       const { node, offset, start, len } =
         document.activeElement === this.el && currentNode(root, pos)
 
+      console.log("active node is", node)
+
       // this would be a really weird error condition
       if (!node) return
 
@@ -158,13 +161,15 @@ export default {
         }
       } else {
         this.autocompletePrompt = ""
-        const { fn, argument } = getHints(node, offset)
+        const { fn, argument } = getHints(node)
         if (fn !== undefined) this.currentFunction = fn
         if (argument !== undefined) this.hint = argument
       }
     },
     async updateCaret() {
-      this.$emit("input", { value: this.value, caret: getCaret(this.el) })
+      const caret = getCaret(this.el)
+      this.$emit("input", { value: this.value, caret })
+      this.afterChange(this.el, caret)
     },
     chooseSuggestion(suggestion) {
       const prior = this.value.slice(0, this.activeNode.start)
@@ -192,26 +197,6 @@ export default {
       suggestionsEl.childNodes[newIndex].focus()
     },
   },
-}
-
-function getHints(node, offset) {
-  console.log("going to get argument", node, offset)
-
-  return {
-    fn: undefined,
-    argument: undefined,
-  }
-  // return {
-  //   fn: {
-  //     name: "test_fn",
-  //     description: "does a bunch of maths",
-  //   },
-  //   argument: {
-  //     number: 1,
-  //     name: "divisor",
-  //     type: "number",
-  //   },
-  // }
 }
 </script>
 

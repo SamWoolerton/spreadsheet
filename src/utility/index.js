@@ -14,6 +14,8 @@ export function Fail(message) {
 
 export const quotient = (top, bottom) => Math.floor(top / bottom)
 
+export const last = arr => arr[arr.length - 1]
+
 export const isObject = obj => typeof obj === "object"
 
 export const flatten = arr => [].concat(...arr)
