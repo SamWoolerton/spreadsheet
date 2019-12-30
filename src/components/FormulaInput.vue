@@ -30,6 +30,16 @@
         tabindex="0"
       >{{ suggestion }}</div>
     </div>
+    <div class="hints" v-if="currentFunction || hint">
+      <div v-if="currentFunction">
+        <span class="font-bold">{{ currentFunction.name }}</span>
+        {{ currentFunction.description }}
+      </div>
+      <div v-if="hint">
+        <span class="font-bold">{{ hint.name }}</span>
+        ({{ hint.type }})
+      </div>
+    </div>
   </div>
 </template>
 
@@ -73,6 +83,8 @@ export default {
     highlighted: "",
     autocompletePrompt: "",
     activeNode: null,
+    currentFunction: null,
+    hint: null,
   }),
   computed: {
     active() {
@@ -133,6 +145,9 @@ export default {
 
       setCaretInNode(node, offset)
 
+      this.currentFunction = null
+      this.hint = null
+
       if (node.parentNode.className === "input-partial") {
         this.autocompletePrompt = node.textContent
         this.activeNode = {
@@ -143,6 +158,9 @@ export default {
         }
       } else {
         this.autocompletePrompt = ""
+        const { fn, argument } = getHints(node, offset)
+        if (fn !== undefined) this.currentFunction = fn
+        if (argument !== undefined) this.hint = argument
       }
     },
     async updateCaret() {
@@ -176,10 +194,25 @@ export default {
   },
 }
 
-// function getArgument(node, offset) {
-//   console.log("going to get argument", node, offset)
-//   return 1
-// }
+function getHints(node, offset) {
+  console.log("going to get argument", node, offset)
+
+  return {
+    fn: undefined,
+    argument: undefined,
+  }
+  // return {
+  //   fn: {
+  //     name: "test_fn",
+  //     description: "does a bunch of maths",
+  //   },
+  //   argument: {
+  //     number: 1,
+  //     name: "divisor",
+  //     type: "number",
+  //   },
+  // }
+}
 </script>
 
 <style lang="scss">
@@ -229,5 +262,13 @@ span {
       background: #ebf2f4;
     }
   }
+}
+
+.hints {
+  position: absolute;
+  background: white;
+  top: 100%;
+  width: 230px;
+  box-shadow: 3px 3px 12px rgba(0, 0, 0, 0.08);
 }
 </style>
