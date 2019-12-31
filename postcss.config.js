@@ -1,6 +1,6 @@
 // per docs https://tailwindcss.com/docs/controlling-file-size
 const purgecss = require("@fullhuman/postcss-purgecss")({
-  content: ["./src/**/*.vue"],
+  content: ["public/index.html", "./src/**/*.vue"],
 
   // Include any special characters you're using in this regular expression
   defaultExtractor: content => content.match(/[\w-/:]+(?<!:)/g) || [],
