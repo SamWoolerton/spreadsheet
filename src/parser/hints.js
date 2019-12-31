@@ -17,17 +17,27 @@ export function getHints(node) {
       const text = nameNode.textContent
       const name = text.slice(0, text.length - 1)
       const fn = functions[name]
+      const functionNode = parent
+
       if (!fn || name === "") return {}
+
+      const overview =
+        name +
+        (fn.overview ||
+          (Array.isArray(fn.arguments)
+            ? "(" + fn.arguments.map(({ name }) => name).join(", ") + ")"
+            : "()"))
+
       if (node === nameNode) {
         const description = fn.description
-        return { fn: { name, description } }
+        return { fn: { name, description }, overview, functionNode }
       }
 
       // closing bracket
-      if (node === last(parent.childNodes)) return {}
+      if (node === last(parent.childNodes)) return { overview, functionNode }
       // Otherwise parentNode is function and the type hinting jumps around.
       // Could alternatively wrap the commas in their own spans but would need to rework AST regen and caret positioning
-      if (node.textContent === ",") return {}
+      if (node.textContent === ",") return { overview, functionNode }
 
       const argumentNodeIndex = [...parent.childNodes]
         .map(c => c === node)
@@ -41,6 +51,8 @@ export function getHints(node) {
           number: argumentNumber,
           ...argumentDetails,
         },
+        overview,
+        functionNode,
       }
     }
 

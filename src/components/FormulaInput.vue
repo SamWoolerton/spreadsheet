@@ -20,7 +20,7 @@
       id="suggestions"
       class="suggestions"
       v-if="autocompleteOptions.length > 0"
-      :style="`left: ${this.offsetPx}px`"
+      :style="`left: ${this.offsetPxNode}px`"
     >
       <div
         v-for="suggestion in autocompleteOptions"
@@ -35,16 +35,21 @@
         tabindex="0"
       >{{ suggestion }}</div>
     </div>
-    <div class="hints" v-if="currentFunction || hint" :style="`left: ${this.offsetPx}px`">
-      <div v-if="currentFunction">
+    <div class="hints" v-if="currentFunction || hint" :style="`left: ${this.offsetPxNode}px;`">
+      <span v-if="currentFunction">
         <span class="font-bold">{{ currentFunction.name }}</span>
         {{ currentFunction.description }}
-      </div>
-      <div v-if="hint">
+      </span>
+      <span v-else-if="hint">
         <span class="font-bold">{{ hint.name }}</span>
         <span v-if="hint.type">({{ hint.type }})</span>
-      </div>
+      </span>
     </div>
+    <div
+      v-if="functionOverview"
+      class="function-overview"
+      :style="`left: ${this.offsetPxFunction}px;`"
+    >{{ functionOverview }}</div>
   </div>
 </template>
 
@@ -91,7 +96,9 @@ export default {
     activeNode: null,
     currentFunction: null,
     hint: null,
-    offsetPx: 0,
+    offsetPxNode: 0,
+    offsetPxFunction: 0,
+    functionOverview: "",
   }),
   computed: {
     active() {
@@ -151,7 +158,7 @@ export default {
       if (!node) return
 
       setCaretInNode(node, offset)
-      this.offsetPx = node.parentNode.offsetLeft
+      this.offsetPxNode = node.parentNode.offsetLeft
       this.currentFunction = null
       this.hint = null
 
@@ -165,7 +172,10 @@ export default {
         }
       } else {
         this.autocompletePrompt = ""
-        const { fn, argument } = getHints(node)
+        const { fn, argument, overview, functionNode } = getHints(node)
+        this.functionOverview = overview
+        if (functionNode !== undefined)
+          this.offsetPxFunction = functionNode.offsetLeft
         if (fn !== undefined) this.currentFunction = fn
         if (argument !== undefined) this.hint = argument
       }
@@ -259,5 +269,13 @@ span {
   top: 100%;
   width: 230px;
   box-shadow: 3px 3px 12px rgba(0, 0, 0, 0.08);
+}
+
+.function-overview {
+  position: absolute;
+  bottom: 100%;
+  background: #ebf2f4;
+  font-size: 0.85em;
+  white-space: nowrap;
 }
 </style>

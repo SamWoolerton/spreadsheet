@@ -13,16 +13,19 @@ export const operators = {
 }
 export const operatorsList = Object.keys(operators)
 
+// would be great to use fn.toString() and then regex to parse out the arguments automatically, but the functions get transpiled and rest parameters are mangled
 export const functions = {
   add: {
     fn: (...args) => args.reduce((acc, next) => acc + next),
     arguments: () => ({ name: "number" }),
+    overview: "(...number)",
     description: "arguments",
     variadic: true,
   },
   multiply: {
     fn: (...args) => args.reduce((acc, next) => acc * next),
     arguments: () => ({ name: "number" }),
+    overview: "(...number)",
     description: "arguments",
     variadic: true,
   },
@@ -66,6 +69,7 @@ export const functions = {
     fn: (sep, ...rest) => rest.join(sep),
     arguments: arg =>
       arg === 0 ? { name: "separator", type: "text" } : { name: "text" },
+    overview: "(separator, ...text)",
     description: "text with a chosen separator",
     variadic: true,
   },
