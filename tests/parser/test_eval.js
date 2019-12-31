@@ -1,5 +1,5 @@
-import { makeParser } from "./index"
-import { Ok, Fail } from "../utility"
+import { makeParser } from "../../src/parser"
+import { Ok, Fail } from "../../src/utility"
 
 const state = {
   A1: { value: Ok(5) },
@@ -74,14 +74,9 @@ const tests = [
   ["Divide function with fallback", `=divide(2,0, 6)`, Ok(6)],
   ["Divide function can fail", `=divide(2,0)`, Fail("divide by 0")],
   ["Function with nested error", `=increment(1 / 0)`, Fail("divide by 0")],
-  ["Parser error", `=#`, Fail("syntax"), { suppress: true }],
+  ["Parser error", `=#`, Fail("syntax")],
   ["Reference", `=A1`, Ok(5)],
-  [
-    "Reference without equals is error",
-    `B3`,
-    Fail("syntax"),
-    { suppress: true },
-  ],
+  ["Reference without equals is error", `B3`, Fail("syntax")],
   ["Reference in expression", `=5 + A1`, Ok(10)],
   ["Reference in chained expression", `=5 + (B3 * 2)`, Ok(31)],
   ["Reference in function", `=increment(A1)`, Ok(6)],
@@ -91,8 +86,8 @@ const tests = [
 
 const outcomes = tests
   // @ts-ignore
-  .map(([description, input, expected, { suppress } = {}]) => {
-    const parsed = parse(input, { suppress })
+  .map(([description, input, expected]) => {
+    const parsed = parse(input)
     const success = parsed.ok
       ? parsed.value === expected.value
       : parsed.message === expected.message

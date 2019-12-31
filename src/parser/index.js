@@ -77,7 +77,7 @@ export function makeParser(references, { ast = false } = {}) {
         .desc("reference"),
   })
 
-  return function parse(input, { suppress = true } = {}) {
+  return function parse(input) {
     try {
       // @ts-ignore
       if (input === "") return Ok("")
@@ -89,7 +89,6 @@ export function makeParser(references, { ast = false } = {}) {
         ? { ok, value: typeof value === "number" ? round(value, 5) : value }
         : { ok, message }
     } catch ({ message }) {
-      if (!suppress) console.log("Parsing error \n", message)
       return Fail("syntax")
     }
   }

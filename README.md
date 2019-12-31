@@ -24,7 +24,7 @@ npm run build
 ## Run tests
 
 ```
-node -r esm src/parser/test_eval
-node -r esm src/parser/test_ast
-node -r esm src/parser/test_regen
+node -r esm tests/parser/test_eval
+node -r esm tests/parser/test_ast
+node -r esm tests/parser/test_regen
 ```

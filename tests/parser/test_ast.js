@@ -1,9 +1,14 @@
-import { regen } from "./regen_from_ast"
+import { makeParser } from "../../src/parser"
+import { Ok, Fail } from "../../src/utility"
 
 const deepEq = (o1, o2) => JSON.stringify(o1) === JSON.stringify(o2)
 
-// order is flipped so that tests can use the same data as to generate AST
+const state = {}
+
+const parse = makeParser(state, { ast: true })
+
 const tests = [
+  ["Blank string", ``, Ok("")],
   ["Number", `3`, { type: "number", value: 3 }],
   ["Larger number", `123`, { type: "number", value: 123 }],
   ["String", `"str"`, { type: "string", value: "str" }],
@@ -129,6 +134,26 @@ const tests = [
     },
   ],
   [
+    "Function after space",
+    `= increment(4)`,
+    {
+      type: "formula",
+      value: {
+        type: "expression",
+        value: [
+          { type: "whitespace", value: " " },
+          {
+            type: "function",
+            value: [
+              "increment",
+              [{ type: "expression", value: [{ type: "number", value: 4 }] }],
+            ],
+          },
+        ],
+      },
+    },
+  ],
+  [
     "Function argument order",
     `=join("a","b","c","d","e")`,
     {
@@ -203,6 +228,7 @@ const tests = [
       },
     },
   ],
+  ["Reference without equals is error", `B3`, Fail("syntax")],
   [
     "Reference in expression",
     `=5 + A1`,
@@ -224,14 +250,16 @@ const tests = [
 
 const outcomes = tests
   // @ts-ignore
-  .map(([description, expected, ast]) => {
-    const { reg: regenerated } = regen(ast, { highlight: false })
+  .map(([description, input, expected]) => {
+    const parsed = parse(input)
     return {
       description,
-      success: deepEq(regenerated, expected),
-      ast,
+      success: deepEq(parsed, expected),
+      input,
       expected,
-      regenerated,
+      parsed,
+      es: JSON.stringify(expected),
+      ep: JSON.stringify(parsed),
     }
   })
   .filter(({ success }) => !success)
