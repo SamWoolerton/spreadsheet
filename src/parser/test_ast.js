@@ -134,6 +134,26 @@ const tests = [
     },
   ],
   [
+    "Function after space",
+    `= increment(4)`,
+    {
+      type: "formula",
+      value: {
+        type: "expression",
+        value: [
+          { type: "whitespace", value: " " },
+          {
+            type: "function",
+            value: [
+              "increment",
+              [{ type: "expression", value: [{ type: "number", value: 4 }] }],
+            ],
+          },
+        ],
+      },
+    },
+  ],
+  [
     "Function argument order",
     `=join("a","b","c","d","e")`,
     {

@@ -6,7 +6,7 @@ export function makeParser(references, { ast = false } = {}) {
   const { main: parser } = P.createLanguage({
     main: r => P.alt(r.formula, r.primitive),
     formula: r =>
-      P.seq(r.eq, r.optWhitespace, P.alt(r.expression, r.function))
+      P.seq(r.eq, P.alt(r.expression, r.function))
         .map(removeNonValues(ast))
         .map(([, value]) => value)
         .map(value => (ast ? { type: "formula", value } : value))
