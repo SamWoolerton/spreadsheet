@@ -1,6 +1,7 @@
 # Spreadsheet
 
 Uses Parsimmon for parser combinator library, and builds a DAG to make computations more efficient.
+Features syntax highlighting, autocomplete, and basic type hinting for functions.
 
 ## Project setup
 
