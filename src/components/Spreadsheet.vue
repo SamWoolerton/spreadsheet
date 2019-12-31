@@ -138,7 +138,7 @@ export default {
   components: { FormulaInput, Toolbar },
   data: () => ({
     numColumns: between(30, 1, 26 * 26),
-    numRows: between(30, 1, 100),
+    numRows: between(50, 1, 100),
     state: startingState,
     editing: {
       pos: null,
