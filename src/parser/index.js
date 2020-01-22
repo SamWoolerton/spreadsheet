@@ -146,6 +146,7 @@ function handleFunction(ast = false) {
   }
 }
 
+// note that this doesn't follow proper order of precedence (* and / before + and -) but is instead left to right
 function handleExtendedExpressions(ast = false) {
   return init => {
     const processed = flatten(init).filter(v => v !== "")

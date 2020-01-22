@@ -18,7 +18,7 @@
           />
           <input v-else disabled value="No cell selected" />
         </div>
-        <Toolbar :selectedFormatting="state[selected.pos]" @update="setFormat" />
+        <Toolbar :selectedFormatting="state[selected.pos].formatting" @update="setFormat" />
       </div>
 
       <div class="mx-auto table-container">
@@ -396,8 +396,8 @@ export default {
       const cell = this.state[this.selected.pos]
       if (!cell) return
 
-      Object.entries(update).forEach(
-        ([key, val]) => (cell.formatting[key] = val),
+      Object.entries(update).forEach(([key, val]) =>
+        this.$set(this.state[this.selected.pos].formatting, key, val),
       )
 
       this.valueChanged = JSON.stringify(cell.formatting)

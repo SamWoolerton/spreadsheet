@@ -269,6 +269,7 @@ span {
   top: 100%;
   width: 230px;
   box-shadow: 3px 3px 12px rgba(0, 0, 0, 0.08);
+  z-index: 2;
 }
 
 .function-overview {
