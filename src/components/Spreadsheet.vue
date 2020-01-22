@@ -505,7 +505,7 @@ td {
 
 .cell {
   width: 5em;
-  height: 1.5em;
+  height: 32px;
   padding: 0;
 
   & > div {
