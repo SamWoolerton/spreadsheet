@@ -1,5 +1,5 @@
 <template>
-  <div class="relative">
+  <div class="relative h-full">
     <div
       :id="id"
       contenteditable
@@ -13,7 +13,7 @@
       @keydown.down.prevent="focusFirstSuggestion"
       @mousedown.stop="updateCaret"
       @focus="handleFocus"
-      class="input formula-input"
+      class="input formula-input h-full"
       spellcheck="false"
     />
     <div
