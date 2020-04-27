@@ -13,7 +13,7 @@
       @keydown.down.prevent="focusFirstSuggestion"
       @mousedown.stop="updateCaret"
       @focus="handleFocus"
-      class="input formula-input h-full"
+      class="input formula-input"
       spellcheck="false"
     />
     <div
@@ -223,6 +223,10 @@ export default {
   background: white;
   border: none;
   color: #777;
+}
+
+.formula-input {
+  height: 2.5rem;
 }
 
 span {
