@@ -285,6 +285,7 @@ export default {
 
         const nextPos = nextCol + nextRow
         this.focus(`cell-${nextPos}`, { wait: false })
+        return event.preventDefault()
       }
 
       const validKey = /^[a-zA-Z0-9_+\-*/&><="]$/.exec(key) !== null
